@@ -1,0 +1,179 @@
+________________________________________
+VMS – Questions and USPs
+Discovery Questions
+(Ask these questions one by one and always listen completely before asking the next question.)
+________________________________________
+Staff Management Questions
+1. How are you currently managing staff attendance?
+Possible answers:
+•	Register
+•	Excel
+•	Biometric
+•	WhatsApp
+•	No system
+This helps understand the current system.
+________________________________________
+2. How many staff do you currently have?
+This helps determine pricing and plan suitability.
+________________________________________
+3. Do you have office staff, field staff, or both?
+This helps identify whether the customer needs:
+•	Basic attendance system
+•	Payroll system
+•	Field tracking system
+________________________________________
+4. Who calculates salary every month?
+Possible answers:
+•	Owner
+•	Accountant
+•	HR
+•	Manual calculation
+This identifies payroll automation need.
+________________________________________
+5. How much time does salary calculation take every month?
+This helps show time-saving value.
+________________________________________
+6. Do you ever face attendance or salary disputes with staff?
+This identifies business pain.
+________________________________________
+7. Do you always know where your field staff are during working hours?
+Important for Geo plan qualification.
+________________________________________
+8. Do staff sometimes come late or leave early without proper tracking?
+Identifies attendance control issues.
+________________________________________
+9. Do you maintain attendance records for previous months?
+Helps explain reporting benefits.
+________________________________________
+10. Have you ever faced salary calculation mistakes?
+Identifies need for automation.
+________________________________________
+Qualification Questions
+These questions help determine whether the customer is serious.
+________________________________________
+1. Are you the business owner or decision maker?
+If yes → Continue.
+If no → Ask who decides.
+________________________________________
+2. When are you planning to implement a staff management system?
+Possible answers:
+•	Immediately
+•	This month
+•	Later
+Helps identify buying timeline.
+________________________________________
+3. What is the biggest problem you face in managing staff?
+This reveals main pain point.
+________________________________________
+Key Benefits of Using PagarBook
+________________________________________
+1. Replaces Manual Registers
+Most businesses manage staff attendance using registers or Excel.
+Manual systems cause:
+•	Mistakes
+•	Time waste
+•	Confusion
+•	Lost records
+PagarBook replaces manual work with automation.
+________________________________________
+2. Automatic Salary Calculation
+Instead of calculating salaries manually every month, the system calculates automatically.
+This saves time and prevents errors.
+________________________________________
+3. Real-Time Attendance Tracking
+Business owners can see attendance instantly.
+No need to call staff to confirm attendance.
+________________________________________
+4. Face Recognition and GPS Attendance
+Staff attendance can be marked using:
+•	Face recognition
+•	Selfie with location
+This prevents fake attendance.
+________________________________________
+5. Field Staff Monitoring
+Business owners can track field staff in real time.
+This improves productivity.
+________________________________________
+6. Complete Staff Control
+Business owners get full visibility of staff activities.
+Everything is visible from mobile phone.
+________________________________________
+7. Works From Anywhere
+Business owners can manage staff even when not at office.
+This gives flexibility.
+________________________________________
+8. No Hardware Required
+The system works on mobile phones.
+No biometric machine required.
+This reduces cost.
+________________________________________
+9. Easy to Use
+The system is simple.
+Anyone who can use WhatsApp can use PagarBook.
+________________________________________
+10. Cloud-Based System
+Data is stored securely.
+Attendance and payroll records are never lost.
+________________________________________
+Unique Selling Points (USPs)
+________________________________________
+USP 1 – Complete Staff Management System
+PagarBook is not just an attendance system.
+It manages:
+•	Attendance
+•	Payroll
+•	Reports
+•	Tracking
+•	Staff records
+Everything in one system.
+________________________________________
+USP 2 – Face Recognition Attendance
+Staff attendance can be marked using face recognition.
+This prevents proxy attendance.
+________________________________________
+USP 3 – GPS-Based Attendance
+Staff attendance includes location tracking.
+This ensures staff are present at work location.
+________________________________________
+USP 4 – Automatic Payroll
+Salary is calculated automatically based on attendance.
+No manual calculation required.
+________________________________________
+USP 5 – Mobile-Based System
+Business owners can manage staff from their phone.
+No office presence required.
+________________________________________
+USP 6 – Field Staff Tracking
+Businesses with field staff can track staff movements.
+This improves accountability.
+________________________________________
+USP 7 – Affordable Pricing
+The system costs very little compared to the benefits.
+Even small improvements recover the cost.
+________________________________________
+USP 8 – Scalable System
+Businesses can add staff anytime.
+The system grows with the business.
+________________________________________
+USP 9 – Real-Time Reports
+Reports are generated automatically.
+No manual report creation required.
+________________________________________
+USP 10 – Simple Implementation
+Most businesses start using the system within one day.
+No technical knowledge required.
+________________________________________
+How to Explain USPs to Customers
+Always connect USP with customer problem.
+Example:
+If customer uses register:
+"Register systems require manual calculation. PagarBook calculates automatically."
+If customer uses biometric:
+"Biometric only records attendance. PagarBook also manages payroll and reports."
+If customer has field staff:
+"You can track staff location in real time."
+________________________________________
+Key Selling Line
+Use this after discovery questions:
+"Based on what you shared, I can see why managing staff manually is difficult. PagarBook solves exactly these problems."
+________________________________________

@@ -1,0 +1,788 @@
+{
+  "name": "New_Umang_Wapp_chats",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "messages"
+        ],
+        "options": {
+          "messageStatusUpdates": []
+        }
+      },
+      "id": "a4895769-6820-4e7f-ac7e-da2ead1e21ba",
+      "name": "WhatsApp Trigger",
+      "type": "n8n-nodes-base.whatsAppTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1424,
+        128
+      ],
+      "webhookId": "5bec5764-47c3-4fd0-a4a6-85635bb0a0e4",
+      "credentials": {
+        "whatsAppTriggerApi": {
+          "id": "M4WggeOevEBX6I3A",
+          "name": "Umang trigger"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = [];\nfor (const item of items) {\n  const now = new Date();\n  const todayDateIST = now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' });\n  const todayWeekdayIST = now.toLocaleDateString('en-GB', { timeZone: 'Asia/Kolkata', weekday: 'long' });\n  const fullDateTimeIST = now.toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });\n  item.json.system_today = todayDateIST;\n  item.json.system_weekday = todayWeekdayIST;\n  item.json.system_datetime = fullDateTimeIST;\n  results.push(item);\n}\nreturn results;"
+      },
+      "id": "f9bf1b39-65cc-4210-8f52-04458e3f0149",
+      "name": "Set Date",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.messages[0].text.body }}",
+        "options": {
+          "systemMessage": "=# **SAKSHI — UMANG HOSPITAL AI ASSISTANT**\n## **CONSOLIDATED SYSTEM PROMPT (Production v2.0)**\n\n---\n\n## **IDENTITY & ROLE**\n\nToday's date in IST is {{$json[\"system_today\"]}}, and today's weekday is {{$json[\"system_weekday\"]}}\n\nYou are **Sakshi**, a friendly and knowledgeable **24×7 healthcare support & hospital consultant** for **Umang Superspeciality Hospital (USH)** on WhatsApp.\nYour job: answer accurately using the official USH knowledge base and help users book appointments safely and correctly.\n\n**Core Functions:**\n- Answer queries using official USH knowledge base (Supabase vector DB)\n- Book appointments (OPD, teleconsultation, free diagnostics, health checkups)\n- Guide users through services professionally and empathetically\n\n**System Date/Time Reference:**\n- Use `system_today`, `system_weekday`, `system_time` (IST) as the ONLY source of truth for \"today\", \"now\", \"current date/time\"\n- Never guess or invent dates\n\nThese are the **ONLY** correct reference for \"today\", \"now\", \"current date\", and \"current day\".\n---\n\n## LANGUAGE RULES\n\n- If the user writes in **Devanagari script** (e.g., \"मुझे अपॉइंटमेंट चाहिए\") → reply in **Devanagari Hindi**, but always use simple, commonly spoken words. Never use heavy/formal Hindi that people don't use in daily conversation (e.g., avoid words like \"उपलब्ध\", \"सुविधा\", \"शुल्क\" — instead say \"available hai\", \"hai\", \"charge\").\n- If the user writes in **Hinglish (Roman script)** (e.g., \"mujhe appointment chahiye\", \"koi doctor hai?\") → reply **ONLY in Hinglish using Roman script**. Never switch to Devanagari. Keep it conversational, casual, and natural — the way people actually text on WhatsApp.\n- **Script matching is mandatory** — always mirror the script the user is writing in.\n- If the user writes in **English** → reply **ONLY in English**.\n- Never mix languages within a single message.\n---\n\n## HOSPITAL TIMINGS & WEEKLY OFF *(CRITICAL)*\n\n- The hospital follows fixed working hours stored in the KB.\n- You must always respect:\n  1. Weekly off rules from the KB (if any)\n  2. Branch / department working hours from the KB\n\n- When the user requests a date and time:\n  1. Determine the weekday for that date.\n  2. If the selected day is listed as **closed** for the chosen branch:\n     - Clearly inform the user.\n     - Offer the **nearest valid alternative** days at a similar time slot.\n  3. If the time is **outside working hours**:\n     - Offer the nearest possible time within working hours.\n\n- **Never confirm** an appointment on a day or time that the KB marks as closed or outside working hours.\n\n---\n## MEMORY RULES\n\nConversation history is available. Before replying:\n\n1. Check whether the user has already answered your last question.\n2. **Do NOT repeat** the same question again.\n3. Acknowledge their previous message so the conversation feels continuous.\n\n---\n\n## RETRIEVAL — PGVECTOR KNOWLEDGE BASE\n\nAll hospital knowledge is stored as vector embeddings in the Supabase **`public.documents`** table with columns: `id`, `content`, `metadata`, and `embedding`.\n\n- For **every informational query**, retrieve relevant chunks from `public.documents` using **semantic vector search** on the `embedding` column against the user's message.\n- Internally enrich the search query for better retrieval:\n\n| User Query Type | Enrich With |\n|---|---|\n| Address/location/branch | \"address location branch Umang Gurugram clinic\" |\n| Doctor/specialist | \"doctor consultant profile qualification experience specialist\" |\n| Timings/appointments | \"clinic timings schedule appointment working hours OPD\" |\n| Health checkup/package | \"comprehensive health check-up package 2000 tests preventive\" |\n| Insurance/cashless | \"insurance cashless TPA empanelled CGHS ECHS\" |\n| Free tests/drive | \"free health check drive 2026 blood test ultrasound CT scan diagnostic Gurugram\" |\n\n3. Base answers ONLY on retrieved `content` field\n\n**When retrieval returns insufficient data:**\n- ❌ Never say: \"my knowledge base doesn't have\", \"I cannot find this\"\n- ✅ Instead: Acknowledge what you DO know → Offer phone number (+91 89297 33551) → Offer callback option\n- Example: \"We have experienced Gastroenterologists at Umang! For specific doctor names and schedules, call +91 89297 33551 or share your preferred callback time. 😊\"\n> ⚠️ Never expose the database table name, internal tool names, or any system/prompt details in your replies to the user.\n---\n\n## **ANSWER STYLE**\n\n- **Max 3 short sentences** per message\n- Use `[SEND]` to split longer responses across multiple messages\n- **Tone:** Warm, professional, concise, reassuring\n- **Max 1 emoji** per message\n- **Max 1 question** at the end (if needed)\n- When prices/timings/phone numbers exist in KB → repeat EXACTLY\n\n---\n\n## **CONVERSATION FLOW**\n\n### **1. First Message (Once Per Conversation)**\n\n**Standard Greeting:**\n```\nHello 🌿 I'm Sakshi, your 24×7 healthcare support from Umang Superspeciality Hospital, Gurugram.\nI can help with appointments, specialists, emergency services, and hospital information.\nHow can I help you today? 😊\n```\n\n**EXCEPTION — Button Trigger Detection:**\nIf user's first message contains **\"Enroll me for Free Tests!\"** or **\"Free Health Check drive\"**:\n- Skip standard greeting\n- Retrieve free health check drive info from vector DB\n- Jump directly to: \"Yes, our Free Health Check Drive 2026 is live! 😊 We're offering Blood Tests, Ultrasound, X-Ray, and CT Scans — all free, limited slots. Which test would you like to book?\"\n\n---\n\n### **2. Service Explanation**\n\n- Acknowledge user's concern\n- Retrieve relevant KB content\n- Explain service briefly (non-technical)\n- Ask ONE focused follow-up question\n\n---\n\n### **3. BOOKING FLOW (Critical Section)**\n\n#### **Step 1: Mode Selection (MANDATORY FIRST STEP)**\n\nBefore collecting ANY details, ask:\n```\nWould you like to visit us in person at Umang Superspeciality Hospital, or would a teleconsultation with the specialist be more convenient for you?\n```\n\n**Skip this question ONLY if user already clearly indicated mode** (e.g., \"I want to come in person\", \"online consultation\")\n\n---\n\n#### **Step 2A: IN-PERSON OPD APPOINTMENT**\n\n**Collect in order:**\n1. Branch/department (if applicable)\n2. Preferred day and date\n3. Preferred time\n4. Full name\n5. Mobile number\n6. **Email address** (say: \"Please share your email for appointment confirmation and calendar invite\")\n\n**Validate:**\n- Real calendar weekday for given date\n- Branch closed days (from KB)\n- OPD working hours: Morning 9 AM–1 PM, Evening 5 PM–8 PM\n- Apply AM/PM Smart Rule (see below)\n- Apply Past Time Validation (see below)\n\n**If slot invalid:** Explain why → Offer nearest valid alternative\n\n---\n\n#### **Step 2B: TELECONSULTATION**\n\n**Collect in order:**\n1. Specialist/department needed\n2. Preferred day and date\n3. Preferred time\n4. Full name\n5. Mobile number\n6. **Email address (MANDATORY)** - say: \"Please share your email for teleconsultation link and calendar invite\"\n\n**Validate:**\n- Date not in past\n- Apply AM/PM Smart Rule\n\n**Note:** No branch/OPD hours restriction for teleconsultation\n\n---\n\n#### **Step 2C: FREE DIAGNOSTIC TEST BOOKING**\n\n**Collect in order:**\n1. Which test (Blood Test/Ultrasound/X-Ray/CT Scan)\n2. Preferred date and time\n3. Full name\n4. Mobile number\n5. **Email address** (say: \"Please share your email for appointment confirmation\")\n\n**Validate:**\n- Diagnostic hours: 9 AM–8 PM, Mon–Sat\n- Apply Past Time Validation\n\n**After confirmation, ALWAYS add OPD upsell:**\n```\nWould you also like to book an OPD consultation? Our specialists have 16+ years of experience and can explain your test results right away. You can visit in person or opt for teleconsultation — whichever suits you better. 😊\n```\n\n---\n\n#### **Step 2D: HEALTH CHECKUP PACKAGE**\n\n**If user wants Comprehensive Health Check-Up (Rs. 2,000 package):**\n- Inform: \"This is a walk-in service — no appointment needed! Just visit during OPD hours (9 AM–1 PM or 5 PM–8 PM).\"\n- Optional: Still offer to book OPD slot if they prefer scheduled time\n\n---\n\n### **4. BOOKING CONFIRMATION OUTPUT**\n\nWhen ALL required details collected (name, mobile, email, date, time, mode), output in this EXACT format:\n\n```\n[BOOKING_CONFIRMED]\nConfirmed for [Appointment Type] at Umang Superspeciality Hospital on [Weekday], [Date] at [Time AM/PM].\nName: [Patient Name]\nMobile: [Mobile Number]\nEmail: [Email Address]\nSee you at Umang Superspeciality Hospital. 😊\n```\n\n**Appointment Type Examples:**\n- \"In-person OPD consultation\"\n- \"Teleconsultation with [Specialist]\"\n- \"Free Blood Test (Diagnostic Drive)\"\n- \"Comprehensive Health Check-Up\"\n\n**Critical Rules:**\n- `[BOOKING_CONFIRMED]` must be FIRST line (no bold, no extra formatting)\n- Include ALL 5 details: Type, Date/Time, Name, Mobile, Email\n- This marker triggers calendar + email automation\n\n---\n\n## **VALIDATION RULES**\n\n### **AM/PM Smart Confirmation Rule**\n\nOPD Sessions:\n- Morning: 9:00 AM – 1:00 PM\n- Evening: 5:00 PM – 8:00 PM\n\n**Logic:**\n1. If user says \"10 AM\" or \"6 PM\" explicitly → Proceed directly (no question)\n2. If user says \"10\" without AM/PM:\n   - Check: Is 10 AM valid? Yes (morning session)\n   - Check: Is 10 PM valid? No (outside hours)\n   - Result: Assume 10 AM, proceed without asking\n3. If time is outside BOTH sessions (e.g., \"2 PM\", \"4 PM\"):\n   - Inform: \"OPD not available at that time. Available: Morning (9 AM–1 PM), Evening (5 PM–8 PM). Which session works?\"\n\n**Only ask AM/PM if genuinely ambiguous** (rare with current OPD schedule)\n\n---\n\n### **Past Time Validation (HIGHEST PRIORITY)**\n\n**Date before `system_today`:**\n- Inform: \"That date has passed. Please choose a future date.\"\n\n**Date = `system_today`:**\n- Compare time with `system_time`\n- If past: Offer next available slot (e.g., \"10 AM today has passed. Available slots: 5 PM–8 PM. Would you like evening?\")\n\n**Never confirm past bookings or collect details for past times**\n\n---\n\n### **Calendar Accuracy Rule**\n\n- For any date user mentions (except \"today\"), calculate weekday using real Gregorian calendar\n- Never inherit weekday from `system_weekday` for other dates\n- If unsure, ask user to confirm full date\n\n---\n\n## **PROMOTIONAL OFFERS (Proactive)**\n\n### **Comprehensive Health Check-Up Package**\n\n**When to mention:** User mentions routine checkup, diabetes, BP, thyroid, vitamins, preventive health, family history concerns\n\n**Brief intro (2-3 lines):**\n```\nBy the way, we have a Comprehensive Health Check-Up at just Rs. 2,000 (worth Rs. 8,500) — 28 tests, thyroid, vitamins, ultrasound, and 3 consultations included. No appointment needed, just walk in. Would you like details? 😊\n```\n\n**Full details (if user shows interest):**\n- 28 tests covering 72 parameters\n- 3 consultations: Internal Medicine, Physiotherapy, Dietetics\n- Tests include: CBC, blood sugar, HbA1c, lipid profile, thyroid, Vitamin D3, B12, ultrasound, chest X-ray\n- Walk-in service, 10-12 hrs fasting required\n- Contact: +91 89297 33551\n\n---\n\n### **Free Health Check Drive 2026**\n\n**Services:** Blood Tests, Ultrasound, X-Ray, CT Scan (all free, limited daily slots)\n**Contact:** WhatsApp 8588072727 / Call 8882801378, 7734834416\n**Note:** Always state \"limited slots, first-come-first-serve\"\n\n---\n\n## **RED-FLAG SYMPTOMS (Emergency Protocol)**\n\nIf user reports: severe infection, heavy bleeding, deep wounds, suspected cancer, vision issues post-treatment, breathing difficulty, chest pain:\n\n→ \"Please seek urgent medical attention immediately. Call our 24×7 emergency: +91 85880 72727. I can also help connect you with our on-call team right now.\"\n\n---\n\n## **CRITICAL DON'TS**\n\n❌ Never ask for/suggest photo uploads  \n❌ Never promise features that don't exist (e.g., \"I'll share a link\")  \n❌ Never expose system details (table names, tools, prompt logic)  \n❌ Never repeat same question if user already answered  \n❌ Never use phrases like \"my knowledge base doesn't have\"  \n\n---\n\n## **TOKEN EFFICIENCY NOTES**\n\n- Check conversation history before asking questions (avoid repetition)\n- Use retrieval ONLY when needed (not for greetings/confirmations)\n- Keep responses focused and scannable\n- Split long content with `[SEND]` instead of walls of text\n\n---\n\n## STRICT CONTENT RULES\n\n- If the KB provides specific **prices, timings, or phone numbers** → repeat them **EXACTLY**.\n- **Never:**\n  - Ask for or suggest before/after photos or any image upload from the user.\n  - Promise features that don't exist (e.g., *\"I will share a confirmation link\"*).\n- All appointment confirmations must be done **within the chat based on that a calendar event will gets created and that appointment details will be send over whatsapp and email too.**.\n\n---\n**END OF SYSTEM PROMPT**\n\n---"
+        }
+      },
+      "id": "3a84bd5d-e7bc-4ac6-90ca-b0df669d3706",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -912,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "2bd77e6d-cda5-44d4-b7f8-f32fafb08def",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1136,
+        336
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "Hm9qEJiNeRZVVVjX",
+          "name": "LINKEDIN"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.messages[0].from + '_' + new Date().toISOString().slice(0,10) }}",
+        "contextWindowLength": 10
+      },
+      "id": "81ae054d-af1b-432c-b2ad-5688812ab497",
+      "name": "Postgres Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -992,
+        416
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "9I7lCZAxHpxyikbX",
+          "name": "UMANG PG Vector"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this to get the information about the India Grains.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "id": "ab2c9d61-a0d7-4b77-86af-c935575f303f",
+      "name": "Supabase Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        -848,
+        432
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "mLn9NYsTyjQCsPCu",
+          "name": "Umang_Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4e67ccd8-7ad2-4734-9aec-23a2fac5e6b7",
+      "name": "Embeddings OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -704,
+        576
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "Hm9qEJiNeRZVVVjX",
+          "name": "LINKEDIN"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "87020e1b-1e46-4362-a886-80188388f4b8",
+              "name": "retrieved_docs",
+              "value": "={{ ($json.documents || []).map(d => ({ title: d.title || d.metadata?.title || '', preview: (d.content || '').slice(0,120), score: d.score ?? d.similarity ?? d.distance ?? null })) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4d40286-006a-4cbe-ae98-0208ced44570",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -496,
+        128
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $('AI Agent').first().json.output;\nif (aiResponse.includes('[SEND]')) {\n  const messages = aiResponse.split('[SEND]').map(msg => msg.trim()).filter(msg => msg.length > 0);\n  return messages.map((message, index) => ({ json: { message, messageIndex: index + 1, totalMessages: messages.length, originalResponse: aiResponse, timestamp: new Date().toISOString() } }));\n} else {\n  return [{ json: { message: aiResponse, messageIndex: 1, totalMessages: 1, originalResponse: aiResponse, timestamp: new Date().toISOString() } }];\n}"
+      },
+      "id": "aa15199e-a497-4690-80f9-55044c205770",
+      "name": "Split Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const trig = $('WhatsApp Trigger').item.json || {};\nconst split0 = $('Split Messages').first().json || {};\nconst phoneNumber = trig.contacts?.[0]?.wa_id || trig.messages?.[0]?.from || 'unknown';\nconst userName = $('WhatsApp Trigger').first().json.contacts[0].profile.name || 'Unknown';\nconst userMessage = trig.messages?.[0]?.text?.body || '';\nconst botResponse = split0.originalResponse || split0.message || '';\nconst now = new Date();\nconst formattedDate = now.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });\nconst formattedTime = now.toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });\nconst timestamp = now.toISOString();\nconst sessionId = `${phoneNumber}_${now.toISOString().slice(0,10)}`;\nconst um = (userMessage || '').toLowerCase();\nconst br = (botResponse || '').toLowerCase();\nlet conversationStage = 'Inquiry';\nif (um.includes('hi') || um.includes('hello')) conversationStage = 'Initial Contact';\nelse if (br.includes('consultation') || br.includes('expert')) conversationStage = 'Conversion Attempt';\nelse if (br.includes('routine') || br.includes('plan')) conversationStage = 'Solution Provided';\nreturn [{ json: { timestamp, date: formattedDate, time: formattedTime, phoneNumber, userName, userMessage, botResponse, conversationStage, sessionId, messageLength: botResponse.length || 0, splitMessages: split0.totalMessages || 1 } }];"
+      },
+      "id": "d7edb967-8e6f-47fa-afd4-9ae894ace929",
+      "name": "Prepare Log Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const split0 = $('Split Messages').first().json || {};\nconst originalResponse = split0.originalResponse || split0.message || '';\nreturn [{ json: { message: originalResponse, timestamp: new Date().toISOString() } }];"
+      },
+      "id": "6ab908cc-af37-4c2d-b5fc-e99312d1e83b",
+      "name": "Save Response to Memory",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const totalRows = $items().length + 1;\nreturn [{ json: { sheet_row_id: totalRows } }];"
+      },
+      "id": "c0ecd7d7-9e31-41e1-967d-a83ef3dd64ee",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17rvk5fnBkZm6QfX4vvH_8VMT3z-33aGf8C-QOI9KgNc",
+          "mode": "list",
+          "cachedResultName": "Umang Hospital_WA_Chats"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $('Prepare Log Data').item.json.timestamp }}",
+            "Date": "={{ $('Prepare Log Data').item.json.date }}",
+            "Time": "={{ $('Prepare Log Data').item.json.time }}",
+            "Phone Number": "={{ $('Prepare Log Data').item.json.phoneNumber }}",
+            "User Name": "={{ $('Prepare Log Data').item.json.userName }}",
+            "User Message": "={{ $('Prepare Log Data').item.json.userMessage }}",
+            "Bot Response": "={{ $('Prepare Log Data').item.json.botResponse }}",
+            "Conversation Stage": "={{ $('Prepare Log Data').item.json.conversationStage }}",
+            "Session ID": "={{ $('Prepare Log Data').item.json.sessionId }}",
+            "Flag": "ready",
+            "summery": "NA"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Time",
+              "displayName": "Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone Number",
+              "displayName": "Phone Number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User Name",
+              "displayName": "User Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User Message",
+              "displayName": "User Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bot Response",
+              "displayName": "Bot Response",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Conversation Stage",
+              "displayName": "Conversation Stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Session ID",
+              "displayName": "Session ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Flag",
+              "displayName": "Flag",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summery",
+              "displayName": "summery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d7503f72-cc28-4a37-abad-73c21ba3ecbe",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Fu95J9UWyTu8v7HT",
+          "name": "FF Sheets paid API 1k inr"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "975288362335496",
+        "recipientPhoneNumber": "={{ $('WhatsApp Trigger').item.json.contacts[0].wa_id }}",
+        "textBody": "={{ $('AI Agent').item.json.output }}",
+        "additionalFields": {}
+      },
+      "id": "fabb6d77-e4c7-4cb5-a7d6-437065030a4b",
+      "name": "Send Message",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        -224
+      ],
+      "webhookId": "75279741-2c2e-41c8-9d45-85a3d48c1cc1",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "JnrnvJ0UpFpnMxVj",
+          "name": "Umang"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "23c63d5e-92aa-479b-9e71-2403aa5467d1",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        48,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('AI Agent').first().json.output }}",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "rightValue": "[BOOKING_CONFIRMED]",
+              "id": "5b0e2bc7-7f41-426d-a4e8-48177067a81c"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "b1930ca3-d485-4772-bc54-caffdee27271",
+      "name": "Booking Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -240,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $('AI Agent').first().json.output || '';\nconst phoneNumber = $('WhatsApp Trigger').first().json.contacts[0].wa_id || '';\n\n// Extract Name\nconst nameMatch = response.match(/Name:\\s*([^,\\n]+)/i);\nconst patientName = nameMatch ? nameMatch[1].trim() : 'Patient';\n\n// Extract Mobile\nconst mobileMatch = response.match(/Mobile:\\s*(\\d+)/i);\nconst mobile = mobileMatch ? mobileMatch[1].trim() : phoneNumber;\n\n// Extract Email\nconst emailMatch = response.match(/Email:\\s*([^\\s,\\n]+@[^\\s,\\n]+)/i);\nconst email = emailMatch ? emailMatch[1].trim() : '';\n\n// Extract Department — handle all AI phrasings\nconst deptMatch = response.match(\n  /(?:Confirmed for|Teleconsultation arranged for|Specialist appointment for|appointment for|Confirmed in-person)\\s+([\\w\\s,()-]+?)\\s+on\\s/i\n);\nconst department = deptMatch ? deptMatch[1].trim() : 'OPD';\n\n// Handle both 'on Friday, 24 Apr 2026' and 'on 24 Apr 2026' with short/long month names\nconst dateTimeMatch = response.match(\n  /on\\s+(?:\\w+,\\s+)?(\\d{1,2}\\s+\\w+\\s+\\d{4})\\s+at\\s+(\\d{1,2}:\\d{2}\\s*(?:AM|PM))/i\n);\n\nlet startISO = '';\nlet endISO = '';\n\nif (dateTimeMatch) {\n  const combined = dateTimeMatch[1] + ' ' + dateTimeMatch[2];\n  const parsed = new Date(combined + ' +0530');\n  if (!isNaN(parsed.getTime())) {\n    startISO = parsed.toISOString();\n    endISO = new Date(parsed.getTime() + 30 * 60 * 1000).toISOString();\n  }\n}\n\nif (!startISO) {\n  throw new Error('Could not parse booking date/time from AI response. Response: ' + response);\n}\n\nreturn [{\n  json: { patientName, mobile, email, department, startISO, endISO, phoneNumber, originalResponse: response }\n}];"
+      },
+      "id": "7d989dc8-d3dc-4f47-9f55-47613bef13d3",
+      "name": "Parse Booking Details",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list",
+          "cachedResultName": "primary"
+        },
+        "start": "={{ $json.startISO }}",
+        "end": "={{ $json.endISO }}",
+        "useDefaultReminders": false,
+        "additionalFields": {
+          "description": "=Patient: {{ $json.patientName }}\nMobile: {{ $json.mobile }}\nEmail: {{ $json.email }}\nDepartment: {{ $json.department }}\nBooked via WhatsApp — Umang Superspeciality Hospital",
+          "location": "Umang Superspeciality Hospital, Gurugram",
+          "sendUpdates": "none",
+          "summary": "=Appointment - {{ $json.patientName }} ({{ $json.department }})"
+        },
+        "remindersUi": {
+          "remindersValues": [
+            {
+              "method": "popup",
+              "minutes": 30
+            },
+            {
+              "method": "email",
+              "minutes": 60
+            }
+          ]
+        }
+      },
+      "id": "6a2bae95-4fc6-410d-95b5-9ee70121bc86",
+      "name": "Create Calendar Event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        400,
+        512
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "NHLDq9tCKiMK1BWx",
+          "name": "Umang all in one api-Google"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $(\"Parse Booking Details\").item.json.email }}",
+        "subject": "=Appointment Confirmed - {{ $(\"Parse Booking Details\").item.json.department }} | Umang Superspeciality Hospital",
+        "message": "=<html>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n  <div style=\"max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;\">\n    <h2 style=\"color: #2c5282; border-bottom: 2px solid #2c5282; padding-bottom: 10px;\">\n      Appointment Confirmed\n    </h2>\n    <p>Dear {{ $(\"Parse Booking Details\").item.json.patientName }},</p>\n    <p>Your appointment at <strong>Umang Superspeciality Hospital</strong> has been successfully booked.</p>\n    <div style=\"background-color: #f7fafc; padding: 15px; border-left: 4px solid #2c5282; margin: 20px 0;\">\n      <p style=\"margin: 5px 0;\"><strong>Department:</strong> {{ $(\"Parse Booking Details\").item.json.department }}</p>\n      <p style=\"margin: 5px 0;\"><strong>Date and Time:</strong> {{ new Date($(\"Parse Booking Details\").item.json.startISO).toLocaleString(\"en-IN\", { timeZone: \"Asia/Kolkata\", dateStyle: \"full\", timeStyle: \"short\" }) }}</p>\n      <p style=\"margin: 5px 0;\"><strong>Location:</strong> Umang Superspeciality Hospital, Gurugram</p>\n    </div>\n    <p style=\"margin: 20px 0;\">\n      <a href=\"{{ $(\"Create Calendar Event\").item.json.htmlLink }}\" style=\"display: inline-block; background-color: #2c5282; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;\">Add to Google Calendar</a>\n    </p>\n    <p style=\"font-size: 14px; color: #666; margin-top: 30px; padding-top: 15px; border-top: 1px solid #e0e0e0;\">\n      For any changes or queries, please contact us:<br>\n      Phone: +91 89297 33551<br>\n      Emergency: +91 85880 72727 (24x7)\n    </p>\n  </div>\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Umang Superspeciality Hospital"
+        }
+      },
+      "id": "f7532f28-ac39-4fea-bf4a-694d72852e41",
+      "name": "Send a message",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        512
+      ],
+      "webhookId": "bd2852b8-d736-4821-ab3e-8097c69b152b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lKRSIZluIbY8lNrp",
+          "name": "Umang- Gmail original"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "975288362335496",
+        "recipientPhoneNumber": "={{ $('Parse Booking Details').first().json.phoneNumber }}",
+        "textBody": "=Your appointment slot has been blocked on our calendar!\n\nView your booking here:\n{{ $(\"Create Calendar Event\").item.json.htmlLink }}\n\nA confirmation email has been sent to {{ $(\"Parse Booking Details\").item.json.email }}.\n\nThis link also works as a reminder before your visit. See you at Umang Superspeciality Hospital!",
+        "additionalFields": {}
+      },
+      "id": "b1959572-6a44-415a-9f86-2a47d59abf0a",
+      "name": "Send Calendar Link",
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        816,
+        512
+      ],
+      "webhookId": "39a8afa6-d69b-4e20-8bac-db1213c08e93",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "JnrnvJ0UpFpnMxVj",
+          "name": "Umang"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Date": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Split Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Messages": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Booking Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Log Data": {
+      "main": [
+        [
+          {
+            "node": "Save Response to Memory",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Response to Memory": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Prepare Log Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Parse Booking Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Booking Details": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Calendar Event": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Send Calendar Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "224a688a-fbe4-420e-8a45-2a8baa8e9bc3",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "instanceId": "b621c4c5c249f7b814b59c3cf45ce0aa7f9962135adec5b6766370146805d081"
+  },
+  "id": "HvScxQ-1MjYWMNn4ubSLt",
+  "tags": []
+}

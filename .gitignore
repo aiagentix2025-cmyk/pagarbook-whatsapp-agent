@@ -1,0 +1,10 @@
+.env
+Secrets.txt
+node_modules/
+npm-debug.log
+.system_generated/
+vps_id_rsa
+vps_id_rsa.pub
+token.json
+import_kb.sql
+*.log

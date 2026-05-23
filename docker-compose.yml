@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  pagarbook-bot:
+    image: pagarbook-bot
+    container_name: pagarbook-bot-container
+    restart: unless-stopped
+    networks:
+      - coolify
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - PORT=3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+      - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
+      - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN}
+      - PGHOST=w04cscwsccsc880sc488cscg
+      - PGUSER=postgres
+      - PGPASSWORD=AGENTiX@2025
+      - PGDATABASE=postgres
+      - PGPORT=5432
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pagarbook-bot.entryPoints=http"
+      - "traefik.http.routers.pagarbook-bot.rule=Host(`pagarbook-bot.76.13.250.173.sslip.io`)"
+      - "traefik.http.services.pagarbook-bot.loadbalancer.server.port=3000"
+      - "caddy_0=http://pagarbook-bot.76.13.250.173.sslip.io"
+      - "caddy_0.handle_path.0_reverse_proxy={{upstreams 3000}}"
+      - "caddy_ingress_network=coolify"
+
+networks:
+  coolify:
+    external: true
