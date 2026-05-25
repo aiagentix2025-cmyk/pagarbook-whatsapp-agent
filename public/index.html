@@ -677,6 +677,102 @@
       color: var(--text-main);
       white-space: pre-wrap;
     }
+
+    /* Premium Drag & Drop Upload Zone */
+    .upload-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--primary);
+      background: rgba(79, 70, 229, 0.03);
+    }
+    .upload-zone svg {
+      width: 48px;
+      height: 48px;
+      color: var(--text-muted);
+      transition: color 0.3s;
+    }
+    .upload-zone:hover svg {
+      color: var(--primary);
+    }
+    .upload-zone p {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .upload-zone p span {
+      color: var(--primary);
+      font-weight: 600;
+    }
+    
+    /* File List & Items */
+    .file-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 13px;
+      animation: fadeIn 0.2s ease;
+    }
+    .file-item .file-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .file-item .file-name {
+      font-weight: 600;
+      color: var(--text-main);
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-item .file-size {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+    .file-item .file-status {
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .file-item .btn-remove {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .file-item .btn-remove:hover {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.05);
+    }
   </style>
 </head>
 <body>
@@ -868,13 +964,26 @@
     <!-- TAB: Documents -->
     <div id="tab-documents" class="tab-content">
       <div class="card">
-        <h2>Upload Document to Knowledge Base (PDF / DOCX / TXT)</h2>
-        <form id="upload-doc-form" onsubmit="uploadDocument(event)">
-          <div class="form-group">
-            <label>Select Document File</label>
-            <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt" required>
+        <h2>Upload Documents to Knowledge Base (PDF / DOCX / TXT)</h2>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+          Select or drag multiple files. The AI platform will automatically extract text, split them into optimal semantic chunks, vectorize them, and connect them to your active chatbot context immediately.
+        </p>
+        
+        <form id="upload-doc-form" onsubmit="uploadDocuments(event)">
+          <!-- Drag & Drop Zone -->
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('doc-file-input').click()">
+            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+            </svg>
+            <p>Drag & drop multiple files here, or <span>browse your computer</span></p>
+            <span style="font-size: 11px; color: var(--text-muted);">Supports PDF, DOCX, TXT (Max 10MB per file)</span>
+            <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt" multiple style="display: none;" onchange="handleFileSelection(event)">
           </div>
-          <button type="submit" class="btn" id="upload-doc-btn">Upload & Vectorize</button>
+
+          <!-- File List Preview -->
+          <div class="file-list" id="selected-files-list"></div>
+
+          <button type="submit" class="btn" id="upload-doc-btn" disabled>Upload & Vectorize All</button>
         </form>
         <div id="upload-status" style="margin-top:16px; font-size:14px; font-weight:500;"></div>
       </div>
@@ -964,11 +1073,14 @@
   <script>
     let activeClientId = localStorage.getItem('active_client_id') || '';
     let clientsList = [];
+    let selectedFiles = [];
 
     // Initialize Page
     window.onload = async () => {
       await fetchClients();
       loadStats();
+      loadAgentConfig();
+      setupDragAndDrop();
       
       setInterval(() => {
         const now = new Date();
@@ -998,6 +1110,7 @@
 
       if (tabId === 'dashboard') loadStats();
       if (tabId === 'chats') loadSessions();
+      if (tabId === 'agents') loadAgentConfig();
     }
 
     // Fetch Clients List
@@ -1063,7 +1176,27 @@
       // Refresh current tab
       loadStats();
       loadSessions();
-      document.getElementById('agent-config-form').reset();
+      loadAgentConfig();
+    }
+
+    // Fetch and Populate Agent Configurations
+    async function loadAgentConfig() {
+      if (!activeClientId) return;
+      try {
+        const res = await fetch(`/api/agents?client_id=${activeClientId}`);
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('agent-name').value = data.name || '';
+          document.getElementById('agent-model').value = data.model_name || 'gpt-4o-mini';
+          document.getElementById('agent-temp').value = data.temperature || 0.3;
+          document.getElementById('agent-prompt').value = data.system_prompt || '';
+        } else {
+          document.getElementById('agent-config-form').reset();
+        }
+      } catch (err) {
+        console.error('Error loading agent config:', err);
+        document.getElementById('agent-config-form').reset();
+      }
     }
 
     // Toggle Webhook listening status
@@ -1143,51 +1276,212 @@
       }
     }
 
-    // Upload Document
-    async function uploadDocument(event) {
+    // Drag & Drop event listener setups
+    function setupDragAndDrop() {
+      const dropZone = document.getElementById('drop-zone');
+      if (!dropZone) return;
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.add('dragover');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('dragover');
+        }, false);
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+      }, false);
+    }
+
+    function handleFiles(files) {
+      for (const file of files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (['pdf', 'docx', 'txt'].includes(ext)) {
+          // Check for duplicate in selection
+          if (!selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
+            selectedFiles.push({
+              file: file,
+              status: 'pending',
+              errorMsg: ''
+            });
+          }
+        } else {
+          alert(`File "${file.name}" has an unsupported format. Only PDF, DOCX, and TXT are supported.`);
+        }
+      }
+      renderFileList();
+    }
+
+    function handleFileSelection(event) {
+      const files = event.target.files;
+      handleFiles(files);
+      event.target.value = ''; // Clear value to allow re-selecting same files
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      renderFileList();
+    }
+
+    function formatBytes(bytes, decimals = 2) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    function renderFileList() {
+      const listContainer = document.getElementById('selected-files-list');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+
+      selectedFiles.forEach((fileObj, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        
+        let statusBadge = '';
+        if (fileObj.status === 'pending') {
+          statusBadge = '<span class="badge info">Ready</span>';
+        } else if (fileObj.status === 'reading') {
+          statusBadge = '<span class="badge warning">Reading...</span>';
+        } else if (fileObj.status === 'uploading') {
+          statusBadge = '<span class="badge warning" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">Vectorizing...</span>';
+        } else if (fileObj.status === 'success') {
+          statusBadge = '<span class="badge success">✅ Done</span>';
+        } else if (fileObj.status === 'error') {
+          statusBadge = `<span class="badge danger" title="${fileObj.errorMsg}">❌ Failed</span>`;
+        }
+
+        const showRemove = fileObj.status === 'pending' || fileObj.status === 'error';
+
+        item.innerHTML = `
+          <div class="file-info">
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color: var(--text-muted); min-width: 18px;">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div style="min-width: 0;">
+              <div class="file-name" title="${fileObj.file.name}">${fileObj.file.name}</div>
+              <div class="file-size">${formatBytes(fileObj.file.size)}</div>
+            </div>
+          </div>
+          <div class="file-status">
+            ${statusBadge}
+            ${showRemove ? `
+              <button type="button" class="btn-remove" onclick="removeFile(${idx})">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            ` : ''}
+          </div>
+        `;
+        listContainer.appendChild(item);
+      });
+
+      const uploadBtn = document.getElementById('upload-doc-btn');
+      if (uploadBtn) {
+        const hasPending = selectedFiles.some(f => f.status === 'pending');
+        uploadBtn.disabled = !hasPending;
+      }
+    }
+
+    async function uploadDocuments(event) {
       event.preventDefault();
       if (!activeClientId) return alert('Please select a client context from the dropdown first.');
 
-      const fileInput = document.getElementById('doc-file-input');
-      const file = fileInput.files[0];
-      if (!file) return;
+      const pendingFiles = selectedFiles.filter(f => f.status === 'pending');
+      if (pendingFiles.length === 0) return;
 
-      const statusDiv = document.getElementById('upload-status');
       const uploadBtn = document.getElementById('upload-doc-btn');
-      statusDiv.textContent = 'Reading file...';
+      const statusDiv = document.getElementById('upload-status');
+      
+      // Disable UI elements
       uploadBtn.disabled = true;
+      document.getElementById('doc-file-input').disabled = true;
+      document.querySelectorAll('.btn-remove').forEach(b => b.style.display = 'none');
 
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64Data = reader.result.split(',')[1];
-        statusDiv.textContent = 'Uploading and vectorizing document chunks...';
+      statusDiv.textContent = `Processing 0 of ${pendingFiles.length} files...`;
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const fileObj = selectedFiles[i];
+        if (fileObj.status !== 'pending') continue;
+
+        fileObj.status = 'reading';
+        renderFileList();
 
         try {
+          const base64Data = await readFileAsBase64(fileObj.file);
+          
+          fileObj.status = 'uploading';
+          renderFileList();
+
           const res = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               client_id: activeClientId,
-              file_name: file.name,
+              file_name: fileObj.file.name,
               file_data: base64Data
             })
           });
 
           const data = await res.json();
           if (res.ok) {
-            statusDiv.innerHTML = `<span style="color:var(--success);">✅ ${data.message}</span>`;
-            fileInput.value = '';
+            fileObj.status = 'success';
+            successCount++;
           } else {
-            statusDiv.innerHTML = `<span style="color:var(--danger);">❌ Ingestion failed: ${data.error}</span>`;
+            fileObj.status = 'error';
+            fileObj.errorMsg = data.error || 'Ingestion failed';
+            failCount++;
           }
         } catch (err) {
-          statusDiv.innerHTML = `<span style="color:var(--danger);">❌ Connection error: ${err.message}</span>`;
-        } finally {
-          uploadBtn.disabled = false;
+          fileObj.status = 'error';
+          fileObj.errorMsg = err.message || 'Connection error';
+          failCount++;
         }
-      };
 
-      reader.readAsDataURL(file);
+        renderFileList();
+        statusDiv.textContent = `Processed ${successCount + failCount} of ${pendingFiles.length} files...`;
+      }
+
+      // Re-enable input
+      document.getElementById('doc-file-input').disabled = false;
+      
+      if (failCount === 0) {
+        statusDiv.innerHTML = `<span style="color:var(--success);">✅ Successfully vectorized and saved all ${successCount} files into Knowledge Base!</span>`;
+        setTimeout(() => {
+          selectedFiles = selectedFiles.filter(f => f.status !== 'success');
+          renderFileList();
+          statusDiv.textContent = '';
+        }, 4000);
+      } else {
+        statusDiv.innerHTML = `<span style="color:var(--danger);">⚠️ Vectorization finished: ${successCount} succeeded, ${failCount} failed.</span>`;
+      }
+
+      loadStats();
+    }
+
+    function readFileAsBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
     }
 
     // Launch Campaign

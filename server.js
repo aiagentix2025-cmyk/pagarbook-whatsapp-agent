@@ -379,6 +379,31 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
+// Get system prompt or settings for AI Agent
+app.get('/api/agents', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) {
+    return res.status(400).json({ error: 'client_id parameter is required.' });
+  }
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'SELECT name, system_prompt, temperature, model_name FROM public.ai_agents WHERE client_id = $1',
+      [client_id]
+    );
+    centralClient.release();
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'AI Agent settings not found for this client.' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Configure system prompts or settings for AI Agent
 app.post('/api/agents', async (req, res) => {
   const { client_id, name, system_prompt, temperature, model_name } = req.body;
