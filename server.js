@@ -12,7 +12,8 @@ const llm = require('./llm');
 const media = require('./media');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Serve Static Frontend files from public/ directory
 app.use(express.static(path.join(__dirname, 'public')));
@@ -673,11 +674,19 @@ app.post('/webhook', async (req, res) => {
       }
 
       // F. Handle Bot Trigger Action
-      // Trigger chatbot to active if user specifically asks a question and session is inactive, 
-      // or if they clicked a button. But we only run API completions if active.
+      // Auto-activate session on ANY incoming text message so the bot always replies.
       if (session.session_status !== 'active') {
-        console.log(`Session for ${recipientPhone} is currently INACTIVE. Skipping LLM execution.`);
-        return;
+        if (messageObj.type === 'text' || messageObj.type === 'image') {
+          console.log(`Auto-activating session for ${recipientPhone} on incoming message.`);
+          await tenantPool.query(
+            "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+            [session.id]
+          );
+          session.session_status = 'active';
+        } else {
+          console.log(`Session for ${recipientPhone} is INACTIVE and message type is not activating. Skipping.`);
+          return;
+        }
       }
 
       // Log User Query

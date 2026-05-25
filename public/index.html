@@ -3,1713 +3,969 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WhatsApp Multi-Tenant AI Platform - Control Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <title>WhatsApp AI Platform — Admin Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #f1f5f9;
-      --panel-bg: rgba(255, 255, 255, 0.75);
-      --border-color: rgba(15, 23, 42, 0.08);
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --primary-glow: rgba(79, 70, 229, 0.08);
-      --accent: #0891b2;
-      --accent-glow: rgba(8, 145, 178, 0.08);
+      --bg: #f0f2f8;
+      --sidebar-bg: #1e1f2e;
+      --sidebar-text: rgba(255,255,255,0.65);
+      --sidebar-active: #fff;
+      --panel: #ffffff;
+      --border: #e8eaf0;
+      --text: #1a1d2e;
+      --muted: #6b7280;
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99,102,241,0.12);
+      --accent: #06b6d4;
       --success: #10b981;
       --warning: #f59e0b;
       --danger: #ef4444;
-      --chat-human: #e2e8f0;
-      --chat-ai: rgba(79, 70, 229, 0.08);
+      --radius: 14px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-    }
-
-    /* Ambient Glow Backgrounds */
-    body::before {
-      content: "";
-      position: absolute;
-      top: -20%;
-      left: -10%;
-      width: 60%;
-      height: 60%;
-      background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    body::after {
-      content: "";
-      position: absolute;
-      bottom: -20%;
-      right: -10%;
-      width: 60%;
-      height: 60%;
-      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-      z-index: -1;
-      pointer-events: none;
-    }
-
-    /* Sidebar Layout */
+    /* ── Sidebar ─────────────────────────────── */
     .sidebar {
-      width: 260px;
-      background: var(--panel-bg);
-      border-right: 1px solid var(--border-color);
-      backdrop-filter: blur(16px);
-      display: flex;
-      flex-direction: column;
-      padding: 24px;
-      z-index: 10;
+      width: 240px; min-width: 240px;
+      background: var(--sidebar-bg);
+      display: flex; flex-direction: column;
+      padding: 24px 16px;
+      z-index: 20;
     }
-
-    .logo-container {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 32px;
-    }
-
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 32px; padding: 0 8px; }
     .logo-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 18px;
-      color: #fff;
-      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; color: #fff; font-weight: 800;
+      box-shadow: 0 4px 14px rgba(99,102,241,0.4);
     }
+    .logo-text { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
 
-    .logo-text {
-      font-weight: 700;
-      font-size: 18px;
-      letter-spacing: -0.5px;
-      background: linear-gradient(135deg, var(--text-main), var(--text-muted));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .client-pill {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px; padding: 10px 12px; margin-bottom: 24px;
     }
-
-    .nav-menu {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex-grow: 1;
+    .client-pill label { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+    .client-pill select {
+      width: 100%; background: transparent; border: none; color: #fff;
+      font-size: 13px; font-weight: 600; outline: none; cursor: pointer;
+      font-family: inherit;
     }
+    .client-pill select option { background: #2d2f42; color: #fff; }
 
+    .nav-section { font-size: 10px; color: rgba(255,255,255,0.25); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 8px; margin-top: 16px; }
+    .nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
     .nav-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      color: var(--text-muted);
-      text-decoration: none;
-      border-radius: 10px;
-      font-weight: 500;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      cursor: pointer;
-      border: 1px solid transparent;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px;
+      color: var(--sidebar-text); font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all 0.2s;
     }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .nav-item.active { background: rgba(99,102,241,0.25); color: #fff; }
+    .nav-item svg { flex-shrink: 0; }
 
-    .nav-item:hover, .nav-item.active {
-      color: var(--text-main);
-      background: rgba(0, 0, 0, 0.03);
-      border-color: var(--border-color);
+    .sidebar-footer {
+      margin-top: auto; padding: 12px; background: rgba(255,255,255,0.05);
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.06);
     }
+    .status-row { display: flex; align-items: center; gap: 8px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); flex-shrink: 0; }
+    .status-label { font-size: 12px; font-weight: 600; color: #fff; }
+    .uptime-label { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 4px; }
 
-    .nav-item.active {
-      background: var(--primary-glow);
-      border-color: rgba(79, 70, 229, 0.2);
-      color: var(--primary);
+    /* ── Main ────────────────────────────────── */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 36px; background: rgba(255,255,255,0.85);
+      border-bottom: 1px solid var(--border); backdrop-filter: blur(10px);
     }
+    .topbar h1 { font-size: 18px; font-weight: 700; }
+    .topbar .time { font-size: 13px; color: var(--muted); }
 
-    .client-select-container {
-      margin-bottom: 24px;
-    }
+    .content { flex: 1; overflow-y: auto; padding: 32px 36px; }
+    .tab { display: none; }
+    .tab.active { display: block; }
 
-    .client-select-container label {
-      display: block;
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-
-    .client-dropdown {
-      width: 100%;
-      background: #fff;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-main);
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 500;
-      outline: none;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .client-dropdown:focus {
-      border-color: var(--primary);
-    }
-
-    .system-status {
-      margin-top: auto;
-      padding: 16px;
-      background: rgba(255, 255, 255, 0.4);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      font-size: 12px;
-    }
-
-    .status-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      background-color: var(--success);
-      border-radius: 50%;
-      margin-right: 6px;
-      box-shadow: 0 0 10px var(--success);
-    }
-
-    /* Main Container */
-    .main-content {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    header {
-      height: 70px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 40px;
-      background: rgba(255, 255, 255, 0.4);
-      backdrop-filter: blur(8px);
-    }
-
-    header h1 {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    /* Tabs Content Container */
-    .tab-content {
-      flex-grow: 1;
-      padding: 40px;
-      overflow-y: auto;
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
-
-    /* Grids & Cards */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 24px;
-      margin-bottom: 40px;
-    }
-
-    .stat-card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 24px;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-      transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-
-    .stat-card:hover {
-      transform: translateY(-2px);
-      border-color: rgba(0, 0, 0, 0.1);
-    }
-
-    .stat-card .label {
-      font-size: 12px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-    }
-
-    .stat-card .value {
-      font-size: 32px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 4px;
-    }
-
-    .stat-card .desc {
-      font-size: 12px;
-      color: var(--accent);
-    }
-
+    /* ── Cards ───────────────────────────────── */
     .card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 32px;
-      margin-bottom: 24px;
-      backdrop-filter: blur(16px);
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px;
+      box-shadow: var(--shadow); margin-bottom: 24px;
     }
+    .card h2 { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
 
-    .card h2 {
-      font-size: 18px;
-      margin-bottom: 20px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--text-main);
+    /* ── Stats ───────────────────────────────── */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
+    .stat {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 22px 24px; box-shadow: var(--shadow);
     }
+    .stat .s-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .stat .s-val { font-size: 30px; font-weight: 800; color: var(--text); }
+    .stat .s-sub { font-size: 12px; color: var(--accent); margin-top: 4px; }
 
-    /* Form Fields */
-    .form-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+    /* ── Grid Layouts ────────────────────────── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .two-col-wide { display: grid; grid-template-columns: 1.4fr 1fr; gap: 24px; }
+    @media (max-width: 1100px) { .two-col, .two-col-wide { grid-template-columns: 1fr; } }
+
+    /* ── Forms ───────────────────────────────── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid .full { grid-column: span 2; }
+    .fg { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .fg label { font-size: 12px; font-weight: 600; color: var(--text); }
+    .fg input, .fg textarea, .fg select {
+      background: #f8faff; border: 1px solid var(--border); border-radius: 8px;
+      padding: 11px 14px; font-size: 14px; color: var(--text); outline: none;
+      font-family: inherit; transition: border-color 0.2s;
     }
+    .fg input:focus, .fg textarea:focus, .fg select:focus { border-color: var(--primary); background: #fff; }
+    .fg textarea { resize: vertical; min-height: 120px; }
 
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    .form-group.full-width {
-      grid-column: span 2;
-    }
-
-    .form-group label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .form-group input, .form-group textarea, .form-group select {
-      background: #fff;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-main);
-      padding: 12px 16px;
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
-      border-color: var(--primary);
-    }
-
-    .form-group textarea {
-      resize: vertical;
-      min-height: 120px;
-    }
-
-    /* Buttons */
+    /* ── Buttons ─────────────────────────────── */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: var(--primary);
-      border: none;
-      color: #fff;
-      padding: 12px 28px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      background: var(--primary); color: #fff; border: none;
+      padding: 11px 24px; border-radius: 9px; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
     }
+    .btn:hover:not(:disabled) { background: var(--primary-hover); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(99,102,241,0.25); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.sec { background: #fff; color: var(--text); border: 1px solid var(--border); }
+    .btn.sec:hover { background: #f5f7ff; }
+    .btn.danger { background: var(--danger); }
 
-    .btn:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-    }
-
-    .btn.secondary {
-      background: #fff;
-      color: var(--text-main);
-      border: 1px solid var(--border-color);
-    }
-
-    .btn.secondary:hover {
-      background: #f8fafc;
-    }
-
-    /* Table / Lists */
-    .data-table-container {
-      overflow-x: auto;
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 14px;
-    }
-
-    .data-table th, .data-table td {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .data-table th {
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      font-size: 12px;
-      letter-spacing: 0.5px;
-    }
-
-    .data-table tr:last-child td {
-      border-bottom: none;
-    }
-
+    /* ── Badge ───────────────────────────────── */
     .badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
+      display: inline-block; padding: 3px 9px; border-radius: 5px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
     }
+    .badge.ok { background: rgba(16,185,129,0.12); color: var(--success); }
+    .badge.warn { background: rgba(245,158,11,0.12); color: var(--warning); }
+    .badge.err { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .badge.info { background: rgba(6,182,212,0.12); color: var(--accent); }
+    .badge.idle { background: rgba(107,114,128,0.1); color: var(--muted); }
 
-    .badge.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
-    .badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-    .badge.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
-    .badge.info { background: rgba(6, 182, 212, 0.1); color: var(--accent); }
+    /* ── Table ───────────────────────────────── */
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead th { padding: 10px 16px; color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); text-align: left; }
+    tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover { background: #f9faff; }
 
-    /* Switch Toggles */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 44px;
-      height: 24px;
+    /* ── Toggle Switch ───────────────────────── */
+    .sw { position: relative; display: inline-block; width: 42px; height: 22px; }
+    .sw input { display: none; }
+    .sw-track {
+      position: absolute; inset: 0; background: #cbd5e1; border-radius: 20px;
+      cursor: pointer; transition: 0.3s;
     }
+    .sw-track:before {
+      content: ''; position: absolute; width: 16px; height: 16px;
+      top: 3px; left: 3px; background: #fff; border-radius: 50%; transition: 0.3s;
+    }
+    .sw input:checked + .sw-track { background: var(--success); }
+    .sw input:checked + .sw-track:before { transform: translateX(20px); }
 
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
+    /* ── Chat Pane ───────────────────────────── */
+    .chat-shell {
+      display: flex; height: calc(100vh - 130px);
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
     }
+    .chat-sidebar { width: 300px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .chat-sidebar-head { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
+    .chat-sessions { flex: 1; overflow-y: auto; }
+    .sess-item { padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.15s; }
+    .sess-item:hover { background: #f5f7ff; }
+    .sess-item.active { background: var(--primary-glow); border-left: 3px solid var(--primary); }
+    .sess-phone { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .sess-meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+    .chat-main { flex: 1; display: flex; flex-direction: column; }
+    .chat-topbar { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; }
+    .chat-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .bubble { max-width: 72%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.55; }
+    .bubble.human { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 3px; box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
+    .bubble.ai { align-self: flex-start; background: #f1f3f9; color: var(--text); border-bottom-left-radius: 3px; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 10px; text-align: center; font-size: 14px; }
 
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #cbd5e1;
-      transition: .3s;
-      border-radius: 34px;
+    /* ── Upload Zone ─────────────────────────── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px;
+      text-align: center; cursor: pointer; transition: 0.25s;
+      display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 18px;
     }
+    .drop-zone:hover, .drop-zone.over { border-color: var(--primary); background: var(--primary-glow); }
+    .drop-zone svg { color: var(--muted); transition: 0.25s; }
+    .drop-zone:hover svg, .drop-zone.over svg { color: var(--primary); }
+    .drop-zone p { font-size: 14px; color: var(--muted); }
+    .drop-zone span.hl { color: var(--primary); font-weight: 700; }
+    .file-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; max-height: 220px; overflow-y: auto; }
+    .fitem { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8faff; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+    .fitem .finfo { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+    .fitem .fname { font-weight: 600; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fitem .fsize { font-size: 11px; color: var(--muted); }
+    .fitem .factions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .btn-rm { background: none; border: none; cursor: pointer; color: var(--muted); padding: 3px; border-radius: 4px; display: flex; }
+    .btn-rm:hover { color: var(--danger); background: rgba(239,68,68,0.06); }
 
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 16px;
-      width: 16px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .3s;
-      border-radius: 50%;
-    }
+    /* ── Vector Sandbox ──────────────────────── */
+    .sb-bar { display: flex; gap: 10px; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 6px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .sb-bar input { flex: 1; border: none; outline: none; font-size: 14px; padding: 8px 14px; font-family: inherit; color: var(--text); }
+    .sb-bar button { background: var(--primary); color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; font-family: inherit; transition: 0.2s; }
+    .sb-bar button:hover { background: var(--primary-hover); }
+    .res-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .res-head { display: flex; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; font-size: 12px; }
+    .res-src { font-weight: 700; color: var(--accent); }
+    .res-score { background: rgba(6,182,212,0.1); color: var(--accent); padding: 3px 8px; border-radius: 5px; font-weight: 700; }
+    .res-body { font-size: 13.5px; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
 
-    input:checked + .slider {
-      background-color: var(--success);
+    /* ── Agent Card Header ───────────────────── */
+    .agent-context-banner {
+      background: var(--primary-glow); border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 10px; padding: 12px 16px; margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px; font-size: 13px;
     }
+    .agent-context-banner strong { color: var(--primary); }
 
-    input:checked + .slider:before {
-      transform: translateX(20px);
-    }
-
-    /* Dual Pane layout (chats) */
-    .console-pane {
-      display: flex;
-      height: calc(100vh - 160px);
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 18px;
-      overflow: hidden;
-      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
-    }
-
-    .session-list {
-      width: 320px;
-      border-right: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    .session-list-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--border-color);
-      font-weight: 600;
-      font-size: 15px;
-      color: var(--text-main);
-    }
-
-    .session-items {
-      flex-grow: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .session-item {
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--border-color);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .session-item:hover {
-      background: rgba(0, 0, 0, 0.02);
-    }
-
-    .session-item.active {
-      background: rgba(79, 70, 229, 0.05);
-      border-left: 3px solid var(--primary);
-    }
-
-    .session-item .phone {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--text-main);
-    }
-
-    .session-item .meta-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .chat-area {
-      flex-grow: 1;
-      display: flex;
-      flex-direction: column;
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .chat-header {
-      padding: 20px;
-      border-bottom: 1px solid var(--border-color);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      color: var(--text-main);
-    }
-
-    .chat-header .title {
-      font-weight: 600;
-      font-size: 15px;
-    }
-
-    .chat-messages {
-      flex-grow: 1;
-      padding: 24px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .chat-bubble {
-      max-width: 70%;
-      padding: 14px 18px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .chat-bubble.human {
-      align-self: flex-end;
-      background: var(--primary);
-      color: #fff;
-      border-bottom-right-radius: 2px;
-      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
-    }
-
-    .chat-bubble.ai {
-      align-self: flex-start;
-      background: var(--chat-human);
-      color: var(--text-main);
-      border-bottom-left-radius: 2px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: var(--text-muted);
-      gap: 12px;
-    }
-
-    /* KB Search sandbox */
-    .sandbox-container {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .search-box {
-      display: flex;
-      gap: 12px;
-      background: #fff;
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 8px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    }
-
-    .search-box input {
-      flex-grow: 1;
-      background: transparent;
-      border: none;
-      outline: none;
-      color: var(--text-main);
-      font-size: 14px;
-      padding: 8px 16px;
-    }
-
-    .search-box button {
-      background: var(--primary);
-      border: none;
-      color: #fff;
-      padding: 10px 24px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    .search-box button:hover {
-      background: var(--primary-hover);
-    }
-
-    .search-results {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .result-card {
-      background: var(--panel-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 14px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    }
-
-    .result-card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 10px;
-    }
-
-    .result-card .source {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent);
-    }
-
-    .result-card .score {
-      font-size: 12px;
-      padding: 4px 8px;
-      background: rgba(8, 145, 178, 0.08);
-      color: var(--accent);
-      border-radius: 6px;
-      font-weight: 600;
-    }
-
-    .result-card .content {
-      font-size: 14px;
-      line-height: 1.6;
-      color: var(--text-main);
-      white-space: pre-wrap;
-    }
-
-    /* Premium Drag & Drop Upload Zone */
-    .upload-zone {
-      border: 2px dashed var(--border-color);
-      border-radius: 12px;
-      padding: 40px;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.2);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .upload-zone:hover, .upload-zone.dragover {
-      border-color: var(--primary);
-      background: rgba(79, 70, 229, 0.03);
-    }
-    .upload-zone svg {
-      width: 48px;
-      height: 48px;
-      color: var(--text-muted);
-      transition: color 0.3s;
-    }
-    .upload-zone:hover svg {
-      color: var(--primary);
-    }
-    .upload-zone p {
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .upload-zone p span {
-      color: var(--primary);
-      font-weight: 600;
-    }
-    
-    /* File List & Items */
-    .file-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 20px;
-      max-height: 250px;
-      overflow-y: auto;
-    }
-    .file-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      background: #fff;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 13px;
-      animation: fadeIn 0.2s ease;
-    }
-    .file-item .file-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .file-item .file-name {
-      font-weight: 600;
-      color: var(--text-main);
-      max-width: 250px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .file-item .file-size {
-      color: var(--text-muted);
-      font-size: 11px;
-    }
-    .file-item .file-status {
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .file-item .btn-remove {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .file-item .btn-remove:hover {
-      color: var(--danger);
-      background: rgba(239, 68, 68, 0.05);
-    }
-
-    /* Dashboard Command Center Layout */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 24px;
-      margin-top: 24px;
-    }
-    @media (max-width: 1200px) {
-      .dashboard-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-    .dashboard-col {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in { animation: fadeIn 0.25s ease; }
   </style>
 </head>
 <body>
 
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="logo-container">
-      <div class="logo-icon">C</div>
-      <div class="logo-text">WA Admin panel</div>
+  <!-- ═══════════════════════════════════════════════ SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">W</div>
+      <div class="logo-text">WA Admin</div>
     </div>
 
-    <!-- Client Dropdown Selector -->
-    <div class="client-select-container">
-      <label>Active Client Context</label>
-      <select class="client-dropdown" id="active-client-dropdown" onchange="changeActiveClient()">
-        <option value="">-- Select Client --</option>
+    <div class="client-pill">
+      <label>Active Client</label>
+      <select id="client-dropdown" onchange="changeClient()">
+        <option value="">— Select Client —</option>
       </select>
     </div>
-    
-    <div class="nav-menu">
-      <div class="nav-item active" onclick="switchTab('dashboard')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"/></svg>
+
+    <div class="nav">
+      <div class="nav-section">Overview</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="go('dashboard')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Dashboard
       </div>
-      <div class="nav-item" onclick="switchTab('clients')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        Manage Clients
+
+      <div class="nav-section">Management</div>
+      <div class="nav-item" id="nav-clients" onclick="go('clients')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Clients
       </div>
-      <div class="nav-item" onclick="switchTab('agents')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-        AI Chatbot Agents
+      <div class="nav-item" id="nav-agents" onclick="go('agents')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 2a2 2 0 012 2v2a2 2 0 01-2 2 2 2 0 01-2-2V4a2 2 0 012-2zM5 10a7 7 0 0114 0"/><path d="M8 22v-3a4 4 0 018 0v3"/></svg>
+        AI Chatbot Agent
       </div>
-      <div class="nav-item" onclick="switchTab('documents')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        KB Documents
+      <div class="nav-item" id="nav-documents" onclick="go('documents')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Knowledge Base
       </div>
-      <div class="nav-item" onclick="switchTab('campaigns')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+      <div class="nav-item" id="nav-campaigns" onclick="go('campaigns')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
         Bulk Campaigns
       </div>
-      <div class="nav-item" onclick="switchTab('chats')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-        Chat History logs
+      <div class="nav-item" id="nav-chats" onclick="go('chats')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        Chat History
       </div>
-      <div class="nav-item" onclick="switchTab('knowledge')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-        Vector KB Sandbox
+      <div class="nav-item" id="nav-sandbox" onclick="go('sandbox')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Vector Sandbox
       </div>
     </div>
-    
-    <div class="system-status">
-      <div style="display: flex; align-items: center; margin-bottom: 6px;">
-        <span class="status-dot"></span>
-        <span style="font-weight: 600; color: #fff;">Server Online</span>
+
+    <div class="sidebar-footer">
+      <div class="status-row">
+        <div class="dot"></div>
+        <div class="status-label">Server Online</div>
       </div>
-      <span style="color: var(--text-muted);" id="system-uptime">Uptime: Loading...</span>
+      <div class="uptime-label" id="uptime-label">Uptime: —</div>
     </div>
-  </div>
+  </aside>
 
-  <!-- Main Content -->
-  <div class="main-content">
-    <header>
-      <h1 id="page-title">Dashboard Overview</h1>
-      <div style="font-size: 14px; color: var(--text-muted);" id="current-time"></div>
-    </header>
+  <!-- ═══════════════════════════════════════════════ MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="page-title">Dashboard</h1>
+      <div class="time" id="clock"></div>
+    </div>
 
-    <!-- TAB: Dashboard -->
-    <div id="tab-dashboard" class="tab-content active">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="label">Knowledge Base Vectors</div>
-          <div class="value" id="stat-kb-chunks">0</div>
-          <div class="desc">Chunk embeddings</div>
+    <div class="content">
+
+      <!-- ─── TAB: DASHBOARD ──────────────────────────────────── -->
+      <div class="tab active" id="tab-dashboard">
+        <div class="stats-row">
+          <div class="stat fade-in">
+            <div class="s-label">KB Vectors</div>
+            <div class="s-val" id="s-kb">—</div>
+            <div class="s-sub">chunk embeddings stored</div>
+          </div>
+          <div class="stat fade-in">
+            <div class="s-label">Chat Sessions</div>
+            <div class="s-val" id="s-chats">—</div>
+            <div class="s-sub">active conversations</div>
+          </div>
+          <div class="stat fade-in">
+            <div class="s-label">Webhook</div>
+            <div class="s-val" style="font-size:20px; padding-top:6px;">✅ Secure</div>
+            <div class="s-sub">verified Meta callback</div>
+          </div>
         </div>
-        <div class="stat-card">
-          <div class="label">Chat Sessions</div>
-          <div class="value" id="stat-chat-sessions">0</div>
-          <div class="desc">Active database sessions</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Webhook Mode</div>
-          <div class="value">Secure</div>
-          <div class="desc">Verified Meta callback</div>
+
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            Quick Setup Checklist
+          </h2>
+          <ol style="padding-left:20px; display:flex; flex-direction:column; gap:10px; font-size:14px; color:var(--muted); line-height:1.6;">
+            <li><strong style="color:var(--text);">Onboard a Client</strong> — Go to <em>Clients</em> tab → fill in Meta credentials → Create DB</li>
+            <li><strong style="color:var(--text);">Configure AI Agent</strong> — Go to <em>AI Chatbot Agent</em> tab → set system prompt → Save</li>
+            <li><strong style="color:var(--text);">Upload Knowledge Base</strong> — Go to <em>Knowledge Base</em> tab → drag & drop PDF/DOCX/TXT files</li>
+            <li><strong style="color:var(--text);">Test the Bot</strong> — Send a WhatsApp message to your registered number → bot replies instantly</li>
+          </ol>
         </div>
       </div>
 
-      <div class="dashboard-grid">
-        <!-- Left Column: Client Management -->
-        <div class="dashboard-col">
-          <!-- Card: Onboarded Clients -->
-          <div class="card" id="onboarded-clients-card">
-            <h2>Onboarded Clients</h2>
-            <div class="data-table-container">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Client Name</th>
-                    <th>Database</th>
-                    <th>Phone ID</th>
-                    <th>Verify Token</th>
-                    <th>Listening</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody id="clients-table-body">
-                  <!-- Dynamic Rows -->
-                </tbody>
-              </table>
+      <!-- ─── TAB: CLIENTS ──────────────────────────────────────── -->
+      <div class="tab" id="tab-clients">
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            Onboarded Clients
+          </h2>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Database</th>
+                  <th>Phone Number ID</th>
+                  <th>Verify Token</th>
+                  <th>Agent</th>
+                  <th>Listening</th>
+                </tr>
+              </thead>
+              <tbody id="clients-tbody">
+                <tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">Loading clients…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            Onboard New Client
+          </h2>
+          <form id="onboard-form" onsubmit="onboardClient(event)">
+            <div class="form-grid">
+              <div class="fg"><label>Client / Organization Name</label><input id="c-name" placeholder="e.g. Pagarbook VMS" required></div>
+              <div class="fg"><label>WhatsApp Phone Number ID</label><input id="c-phone" placeholder="e.g. 1173335072523347" required></div>
+              <div class="fg"><label>Meta App ID</label><input id="c-appid" placeholder="e.g. 1009514481606880" required></div>
+              <div class="fg"><label>Meta App Secret</label><input id="c-secret" placeholder="e.g. c4176c068e…" required></div>
+              <div class="fg"><label>WhatsApp Business Account ID</label><input id="c-bizid" placeholder="e.g. 1708964607185517" required></div>
+              <div class="fg"><label>Webhook Verify Token</label><input id="c-verify" value="pagarbook_whatsapp_verify_token_2026" required></div>
+              <div class="fg full"><label>Permanent System Access Token</label><input id="c-token" placeholder="EAAOW…" required></div>
             </div>
-          </div>
-
-          <!-- Card: Onboard Client -->
-          <div class="card">
-            <h2>Onboard a New Client</h2>
-            <form id="onboard-client-form" onsubmit="onboardClient(event)">
-              <div class="form-grid">
-                <div class="form-group">
-                  <label>Client Name / Organization</label>
-                  <input type="text" id="client-name" placeholder="e.g. Umang Hospital" required>
-                </div>
-                <div class="form-group">
-                  <label>WhatsApp Phone Number ID</label>
-                  <input type="text" id="client-phone-id" placeholder="e.g. 1201782259675601" required>
-                </div>
-                <div class="form-group">
-                  <label>Meta App ID</label>
-                  <input type="text" id="client-app-id" placeholder="e.g. 1009514481606880" required>
-                </div>
-                <div class="form-group">
-                  <label>Meta App Secret</label>
-                  <input type="text" id="client-app-secret" placeholder="e.g. c4176c068e..." required>
-                </div>
-                <div class="form-group">
-                  <label>WhatsApp Business Account ID</label>
-                  <input type="text" id="client-business-id" placeholder="e.g. 1642047753726751" required>
-                </div>
-                <div class="form-group">
-                  <label>Custom Webhook Verify Token</label>
-                  <input type="text" id="client-verify-token" value="pagarbook_whatsapp_verify_token_2026" required>
-                </div>
-                <div class="form-group full-width">
-                  <label>Permanent Access Token</label>
-                  <input type="text" id="client-access-token" placeholder="EAAOW..." required>
-                </div>
-              </div>
-              <button type="submit" class="btn">Onboard Client & Create DB</button>
-            </form>
-          </div>
+            <button type="submit" class="btn" id="onboard-btn">Onboard Client &amp; Create Database</button>
+            <div id="onboard-msg" style="margin-top:12px; font-size:13px;"></div>
+          </form>
         </div>
+      </div>
 
-        <!-- Right Column: Agent Configuration -->
-        <div class="dashboard-col">
-          <div class="card" id="agent-config-card">
-            <h2 id="agent-config-title">Configure Chatbot Agent</h2>
-            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
-              Configuring settings for active context: <strong id="active-context-name" style="color: var(--primary);">None selected</strong>
-            </p>
-            <form id="agent-config-form" onsubmit="saveAgentConfig(event)">
-              <div class="form-group">
-                <label>Agent Name / Persona</label>
-                <input type="text" id="agent-name" placeholder="e.g. Sakshi" required>
-              </div>
-              <div class="form-group">
-                <label>LLM Engine Model</label>
-                <select id="agent-model">
+      <!-- ─── TAB: AGENTS ────────────────────────────────────────── -->
+      <div class="tab" id="tab-agents">
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            Configure AI Chatbot Agent
+          </h2>
+          <div class="agent-context-banner" id="agent-banner">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+            Configuring for: <strong id="agent-context-name">— select a client above —</strong>
+          </div>
+          <form id="agent-form" onsubmit="saveAgent(event)">
+            <div class="two-col">
+              <div class="fg"><label>Agent Name / Persona</label><input id="a-name" placeholder="e.g. Sakshi" required></div>
+              <div class="fg"><label>LLM Model</label>
+                <select id="a-model">
                   <option value="gpt-4o-mini">OpenAI gpt-4o-mini (Vision + Text)</option>
-                  <option value="llama-3.1-70b-versatile">Groq Llama 3.1 70B (Fast Text)</option>
-                  <option value="mixtral-8x7b-32768">Groq Mixtral 8x7B (Low latency Text)</option>
+                  <option value="llama-3.1-70b-versatile">Groq Llama 3.1 70B (Fast)</option>
+                  <option value="mixtral-8x7b-32768">Groq Mixtral 8x7B (Low latency)</option>
                 </select>
               </div>
-              <div class="form-group">
-                <label>Response Temperature (0.0 = Precise, 1.0 = Creative)</label>
-                <input type="number" id="agent-temp" step="0.1" min="0" max="1" value="0.3" required>
+            </div>
+            <div class="fg"><label>Response Temperature — 0.0 Precise → 1.0 Creative</label><input id="a-temp" type="number" step="0.1" min="0" max="1" value="0.3" required></div>
+            <div class="fg"><label>System Prompt — Persona, guidelines, workflow instructions</label>
+              <textarea id="a-prompt" placeholder="You are Sakshi, a helpful sales representative for Pagarbook VMS…" style="min-height:300px;" required></textarea>
+            </div>
+            <button type="submit" class="btn" id="agent-save-btn">Save Agent Configuration</button>
+            <div id="agent-msg" style="margin-top:12px; font-size:13px;"></div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ─── TAB: DOCUMENTS ─────────────────────────────────────── -->
+      <div class="tab" id="tab-documents">
+        <div class="two-col-wide">
+          <div class="card fade-in">
+            <h2>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/></svg>
+              Upload to Knowledge Base
+            </h2>
+            <form id="upload-form" onsubmit="uploadFiles(event)">
+              <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                <svg width="44" height="44" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/></svg>
+                <p>Drag &amp; drop files here, or <span class="hl">browse</span></p>
+                <p style="font-size:12px;">PDF, DOCX, TXT — Max 40 MB per file</p>
+                <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt" style="display:none;" onchange="handleFileSelect(event)">
               </div>
-              <div class="form-group">
-                <label>System Prompt (Personas, Guidelines, Workflows)</label>
-                <textarea id="agent-prompt" placeholder="Define your agent identity and how they should answer..." required style="min-height: 280px;"></textarea>
-              </div>
-              <button type="submit" class="btn">Save Agent Configurations</button>
+              <div class="file-list" id="file-list"></div>
+              <button type="submit" class="btn" id="upload-btn" disabled>Upload &amp; Vectorize All Files</button>
+              <div id="upload-msg" style="margin-top:12px; font-size:13px;"></div>
             </form>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- TAB: Clients Placeholder -->
-    <div id="tab-clients" class="tab-content"></div>
-
-    <!-- TAB: Agents Placeholder -->
-    <div id="tab-agents" class="tab-content"></div>
-
-    <!-- TAB: Documents -->
-    <div id="tab-documents" class="tab-content">
-      <div class="card">
-        <h2>Upload Documents to Knowledge Base (PDF / DOCX / TXT)</h2>
-        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
-          Select or drag multiple files. The AI platform will automatically extract text, split them into optimal semantic chunks, vectorize them, and connect them to your active chatbot context immediately.
-        </p>
-        
-        <form id="upload-doc-form" onsubmit="uploadDocuments(event)">
-          <!-- Drag & Drop Zone -->
-          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('doc-file-input').click()">
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-            </svg>
-            <p>Drag & drop multiple files here, or <span>browse your computer</span></p>
-            <span style="font-size: 11px; color: var(--text-muted);">Supports PDF, DOCX, TXT (Max 10MB per file)</span>
-            <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt" multiple style="display: none;" onchange="handleFileSelection(event)">
-          </div>
-
-          <!-- File List Preview -->
-          <div class="file-list" id="selected-files-list"></div>
-
-          <button type="submit" class="btn" id="upload-doc-btn" disabled>Upload & Vectorize All</button>
-        </form>
-        <div id="upload-status" style="margin-top:16px; font-size:14px; font-weight:500;"></div>
-      </div>
-      <div class="card">
-        <h2>Upload Guidelines</h2>
-        <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted);">
-          Documents uploaded will be split into chunks of 1000 characters (200 characters overlap) and vectorized using OpenAI's embedding API. All chunks are stored securely inside the client's isolated database.
-        </p>
-      </div>
-    </div>
-
-    <!-- TAB: Campaigns -->
-    <div id="tab-campaigns" class="tab-content">
-      <div class="card">
-        <h2>Dispatch Bulk Template Campaign</h2>
-        <form id="campaign-form" onsubmit="launchCampaign(event)">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Campaign Title</label>
-              <input type="text" id="camp-name" placeholder="e.g. Free Health Checkup Drive" required>
-            </div>
-            <div class="form-group">
-              <label>WhatsApp Template Name (Meta Registered)</label>
-              <input type="text" id="camp-template" placeholder="e.g. checkup_drive_invite" required>
-            </div>
-            <div class="form-group">
-              <label>Language Code</label>
-              <input type="text" id="camp-lang" value="en" placeholder="e.g. en, hi" required>
-            </div>
-            <div class="form-group">
-              <label>Recipient List (Comma-separated numbers with country code)</label>
-              <textarea id="camp-recipients" placeholder="e.g. +918588072727, +918882801378" required></textarea>
-            </div>
-            <div class="form-group full-width">
-              <label>Template Component Variables (Optional JSON Array)</label>
-              <textarea id="camp-components" placeholder='e.g. [{"type": "body", "parameters": [{"type": "text", "text": "Sakshi"}]}]'></textarea>
-            </div>
-          </div>
-          <button type="submit" class="btn">Launch Campaign & Send Messages</button>
-        </form>
-      </div>
-    </div>
-
-    <!-- TAB: Chats -->
-    <div id="tab-chats" class="tab-content">
-      <div class="console-pane">
-        <div class="session-list">
-          <div class="session-list-header">Conversation Sessions</div>
-          <div class="session-items" id="session-items-list">
-            <!-- Dynamic Sessions -->
-          </div>
-        </div>
-        <div class="chat-area">
-          <div class="empty-state" id="chat-empty-state">
-            <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Select a session from the list to view the chat log history.
-          </div>
-          <div style="display: none; height: 100%; flex-direction: column;" id="chat-active-state">
-            <div class="chat-header">
-              <div class="title" id="active-session-title">Session: ...</div>
-              <div style="font-size: 12px; color: var(--text-muted);" id="active-session-meta">...</div>
-            </div>
-            <div class="chat-messages" id="chat-messages-container">
-              <!-- Dynamic Messages -->
+          <div class="card fade-in">
+            <h2>How it works</h2>
+            <div style="display:flex; flex-direction:column; gap:16px; font-size:13.5px; color:var(--muted); line-height:1.65;">
+              <div><strong style="color:var(--text);">1. Upload</strong><br>Select one or more PDF, DOCX or TXT files from your computer or drag them in.</div>
+              <div><strong style="color:var(--text);">2. Chunk</strong><br>Each file is split into 1 000-character chunks with 200-character overlap for context continuity.</div>
+              <div><strong style="color:var(--text);">3. Vectorize</strong><br>Each chunk is embedded using OpenAI's <code>text-embedding-ada-002</code> and stored in pgvector.</div>
+              <div><strong style="color:var(--text);">4. Live in bot</strong><br>Instantly available. The bot semantically searches your KB on every incoming message for relevant context.</div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- TAB: Vector KB Sandbox -->
-    <div id="tab-knowledge" class="tab-content">
-      <div class="sandbox-container">
-        <div class="search-box">
-          <input type="text" id="sandbox-search-input" placeholder="Type a message to test semantic similarity lookup (e.g. 'pricing details')...">
-          <button onclick="performSandboxSearch()">Search DB Chunks</button>
+      <!-- ─── TAB: CAMPAIGNS ────────────────────────────────────── -->
+      <div class="tab" id="tab-campaigns">
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+            Dispatch Bulk Template Campaign
+          </h2>
+          <form id="campaign-form" onsubmit="launchCampaign(event)">
+            <div class="two-col">
+              <div class="fg"><label>Campaign Title</label><input id="camp-name" placeholder="e.g. Product Launch Blast" required></div>
+              <div class="fg"><label>WhatsApp Template Name (Meta Approved)</label><input id="camp-template" placeholder="e.g. product_launch_v1" required></div>
+              <div class="fg"><label>Language Code</label><input id="camp-lang" value="en" required></div>
+              <div class="fg"><label>Recipients (comma-separated with country code)</label><textarea id="camp-recip" placeholder="+919876543210, +918800112233" required></textarea></div>
+              <div class="fg full"><label>Template Variables (JSON Array, optional)</label><textarea id="camp-vars" placeholder='[{"type":"body","parameters":[{"type":"text","text":"Sakshi"}]}]'></textarea></div>
+            </div>
+            <button type="submit" class="btn" id="campaign-btn">🚀 Launch Campaign</button>
+            <div id="camp-msg" style="margin-top:12px; font-size:13px;"></div>
+          </form>
         </div>
-        <div class="search-results" id="sandbox-results-container">
-          <div class="empty-state">
-            Type a query above to see pgvector match results for the active client database.
+      </div>
+
+      <!-- ─── TAB: CHATS ─────────────────────────────────────────── -->
+      <div class="tab" id="tab-chats">
+        <div class="chat-shell">
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-head">Conversation Sessions</div>
+            <div class="chat-sessions" id="sessions-list">
+              <div class="empty-state" style="padding:24px; font-size:13px;">No sessions yet</div>
+            </div>
+          </div>
+          <div class="chat-main">
+            <div class="chat-topbar" id="chat-topbar">Select a conversation →</div>
+            <div class="chat-body" id="chat-body">
+              <div class="empty-state">
+                <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Select a session on the left to view the conversation
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
+
+      <!-- ─── TAB: SANDBOX ──────────────────────────────────────── -->
+      <div class="tab" id="tab-sandbox">
+        <div class="sb-bar">
+          <input id="sb-input" placeholder="Type a query to test semantic similarity against your KB…" onkeydown="if(event.key==='Enter') sbSearch()">
+          <button onclick="sbSearch()">Search Vectors</button>
+        </div>
+        <div id="sb-results">
+          <div class="empty-state" style="padding:40px;">Enter a query above to search your pgvector Knowledge Base chunks</div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
 
   <script>
-    let activeClientId = localStorage.getItem('active_client_id') || '';
-    let clientsList = [];
-    let selectedFiles = [];
+    let clientId = localStorage.getItem('wab_client') || '';
+    let clientList = [];
+    let selFiles = [];
 
-    // Initialize Page
+    // ═══════════ INIT ═══════════
     window.onload = async () => {
-      await fetchClients();
+      tick();
+      setInterval(tick, 1000);
+      await loadClients();
       loadStats();
       loadAgentConfig();
-      setupDragAndDrop();
-      
-      setInterval(() => {
-        const now = new Date();
-        document.getElementById('current-time').textContent = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
-      }, 1000);
+      initDnD();
     };
 
-    // Switch Tabs
-    function switchTab(tabId) {
-      let targetTab = tabId;
-      let scrollToId = null;
-
-      if (tabId === 'clients') {
-        targetTab = 'dashboard';
-        scrollToId = 'onboarded-clients-card';
-      } else if (tabId === 'agents') {
-        targetTab = 'dashboard';
-        scrollToId = 'agent-config-card';
-      }
-
-      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-      
-      document.getElementById(`tab-${targetTab}`).classList.add('active');
-      
-      // Highlight sidebar item representing current selection
-      const clickedItem = Array.from(document.querySelectorAll('.nav-item')).find(item => item.textContent.trim().toLowerCase().includes(tabId.toLowerCase()));
-      if (clickedItem) clickedItem.classList.add('active');
-
-      const titles = {
-        'dashboard': 'Dashboard Overview',
-        'clients': 'Client Account Configurations',
-        'agents': 'AI Agents Persona Settings',
-        'documents': 'Knowledge Base Documents',
-        'campaigns': 'Bulk Campaign Broadcaster',
-        'chats': 'Active Chat Session Transcripts',
-        'knowledge': 'Vector KB Similarity Sandbox'
-      };
-      document.getElementById('page-title').textContent = titles[targetTab];
-
-      if (targetTab === 'dashboard') {
-        loadStats();
-        loadAgentConfig();
-      }
-      if (targetTab === 'chats') loadSessions();
-
-      if (scrollToId) {
-        setTimeout(() => {
-          document.getElementById(scrollToId)?.scrollIntoView({ behavior: 'smooth' });
-        }, 150);
-      }
+    function tick() {
+      document.getElementById('clock').textContent =
+        new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
     }
 
-    // Fetch Clients List
-    async function fetchClients() {
+    // ═══════════ NAV ════════════
+    const tabTitles = {
+      dashboard: 'Dashboard',
+      clients:   'Manage Clients',
+      agents:    'AI Chatbot Agent',
+      documents: 'Knowledge Base',
+      campaigns: 'Bulk Campaigns',
+      chats:     'Chat History',
+      sandbox:   'Vector KB Sandbox'
+    };
+
+    function go(id) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.getElementById('tab-' + id).classList.add('active');
+      document.getElementById('nav-' + id).classList.add('active');
+      document.getElementById('page-title').textContent = tabTitles[id] || id;
+
+      if (id === 'dashboard') { loadStats(); loadAgentConfig(); }
+      if (id === 'chats') loadSessions();
+      if (id === 'agents') loadAgentConfig();
+      if (id === 'clients') loadClients();
+    }
+
+    // ═══════════ CLIENTS ════════
+    async function loadClients() {
       try {
-        const res = await fetch('/api/clients');
-        clientsList = await res.json();
-        
-        // Populate dropdown
-        const dropdown = document.getElementById('active-client-dropdown');
-        dropdown.innerHTML = '<option value="">-- Select Client --</option>';
-        
-        const tableBody = document.getElementById('clients-table-body');
-        tableBody.innerHTML = '';
+        const r = await fetch('/api/clients');
+        clientList = await r.json();
 
-        clientsList.forEach(client => {
-          const opt = document.createElement('option');
-          opt.value = client.id;
-          opt.textContent = client.name;
-          if (client.id === activeClientId) {
-            opt.selected = true;
-          }
-          dropdown.appendChild(opt);
+        const dd = document.getElementById('client-dropdown');
+        dd.innerHTML = '<option value="">— Select Client —</option>';
+        clientList.forEach(c => {
+          const o = document.createElement('option');
+          o.value = c.id; o.textContent = c.name;
+          if (c.id === clientId) o.selected = true;
+          dd.appendChild(o);
+        });
+        if (!clientId && clientList.length > 0) {
+          clientId = clientList[0].id;
+          localStorage.setItem('wab_client', clientId);
+          dd.value = clientId;
+        }
 
-          // Populate Table Row
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td style="font-weight: 600;">${client.name}</td>
-            <td><code>${client.db_name}</code></td>
-            <td><code>${client.phone_number_id}</code></td>
-            <td><code>${client.webhook_verify_token}</code></td>
+        // Build clients table
+        const tbody = document.getElementById('clients-tbody');
+        if (!tbody) return;
+        if (clientList.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">No clients onboarded yet. Use the form below.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        clientList.forEach(c => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${c.name}</strong></td>
+            <td><code style="font-size:12px;">${c.db_name}</code></td>
+            <td><code style="font-size:12px;">${c.phone_number_id}</code></td>
+            <td><code style="font-size:12px;">${c.webhook_verify_token || '—'}</code></td>
+            <td><span class="badge info" id="agent-badge-${c.id}">Loading…</span></td>
             <td>
-              <label class="switch">
-                <input type="checkbox" ${client.is_listening ? 'checked' : ''} onchange="toggleClientWebhook('${client.phone_number_id}', this.checked)">
-                <span class="slider"></span>
+              <label class="sw">
+                <input type="checkbox" ${c.is_listening ? 'checked' : ''} onchange="toggleListen('${c.phone_number_id}', this.checked)">
+                <span class="sw-track"></span>
               </label>
             </td>
-            <td>
-              <span class="badge info">active</span>
-            </td>
           `;
-          tableBody.appendChild(row);
+          tbody.appendChild(tr);
+          checkAgentExists(c.id);
         });
-
-        // Set default active if none chosen
-        if (!activeClientId && clientsList.length > 0) {
-          activeClientId = clientsList[0].id;
-          localStorage.setItem('active_client_id', activeClientId);
-          dropdown.value = activeClientId;
-        }
-      } catch (err) {
-        console.error('Error fetching clients:', err);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // Change Active Client context
-    function changeActiveClient() {
-      const dropdown = document.getElementById('active-client-dropdown');
-      activeClientId = dropdown.value;
-      localStorage.setItem('active_client_id', activeClientId);
-      console.log('Switched client context to:', activeClientId);
-      
-      // Refresh current tab
+    async function checkAgentExists(cid) {
+      const el = document.getElementById('agent-badge-' + cid);
+      if (!el) return;
+      try {
+        const r = await fetch('/api/agents?client_id=' + cid);
+        if (r.ok) {
+          const d = await r.json();
+          el.className = 'badge ok';
+          el.textContent = '✅ ' + (d.name || 'Configured');
+        } else {
+          el.className = 'badge warn';
+          el.textContent = '⚠️ Not configured';
+        }
+      } catch { el.className = 'badge err'; el.textContent = 'Error'; }
+    }
+
+    function changeClient() {
+      clientId = document.getElementById('client-dropdown').value;
+      localStorage.setItem('wab_client', clientId);
       loadStats();
-      loadSessions();
       loadAgentConfig();
     }
 
-    // Fetch and Populate Agent Configurations
+    async function toggleListen(phoneId, val) {
+      await fetch('/api/clients/' + phoneId + '/toggle', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_listening: val })
+      });
+    }
+
+    async function onboardClient(e) {
+      e.preventDefault();
+      const btn = document.getElementById('onboard-btn');
+      const msg = document.getElementById('onboard-msg');
+      btn.disabled = true; btn.textContent = 'Creating database…';
+      msg.textContent = '';
+      try {
+        const r = await fetch('/api/clients', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('c-name').value.trim(),
+            phone_number_id: document.getElementById('c-phone').value.trim(),
+            app_id: document.getElementById('c-appid').value.trim(),
+            app_secret: document.getElementById('c-secret').value.trim(),
+            whatsapp_business_id: document.getElementById('c-bizid').value.trim(),
+            webhook_verify_token: document.getElementById('c-verify').value.trim(),
+            system_access_token: document.getElementById('c-token').value.trim(),
+          })
+        });
+        const d = await r.json();
+        if (r.ok) {
+          msg.innerHTML = '<span style="color:var(--success);">✅ ' + d.message + '</span>';
+          document.getElementById('onboard-form').reset();
+          document.getElementById('c-verify').value = 'pagarbook_whatsapp_verify_token_2026';
+          await loadClients();
+        } else {
+          msg.innerHTML = '<span style="color:var(--danger);">❌ ' + d.error + '</span>';
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:var(--danger);">❌ ' + err.message + '</span>';
+      }
+      btn.disabled = false; btn.textContent = 'Onboard Client & Create Database';
+    }
+
+    // ═══════════ AGENT ══════════
     async function loadAgentConfig() {
-      const contextLabel = document.getElementById('active-context-name');
-      if (!activeClientId) {
-        if (contextLabel) contextLabel.textContent = 'None selected';
-        return;
+      const nameEl = document.getElementById('agent-context-name');
+      if (nameEl) {
+        const c = clientList.find(x => x.id === clientId);
+        nameEl.textContent = c ? c.name : '— select a client above —';
       }
-      
-      if (contextLabel && clientsList.length > 0) {
-        const activeClient = clientsList.find(c => c.id === activeClientId);
-        if (activeClient) {
-          contextLabel.textContent = activeClient.name;
-        }
-      }
-
+      if (!clientId) return;
       try {
-        const res = await fetch(`/api/agents?client_id=${activeClientId}`);
-        if (res.ok) {
-          const data = await res.json();
-          document.getElementById('agent-name').value = data.name || '';
-          document.getElementById('agent-model').value = data.model_name || 'gpt-4o-mini';
-          document.getElementById('agent-temp').value = data.temperature || 0.3;
-          document.getElementById('agent-prompt').value = data.system_prompt || '';
+        const r = await fetch('/api/agents?client_id=' + clientId);
+        if (r.ok) {
+          const d = await r.json();
+          document.getElementById('a-name').value = d.name || '';
+          document.getElementById('a-model').value = d.model_name || 'gpt-4o-mini';
+          document.getElementById('a-temp').value = d.temperature || 0.3;
+          document.getElementById('a-prompt').value = d.system_prompt || '';
         } else {
-          document.getElementById('agent-config-form').reset();
+          document.getElementById('agent-form').reset();
+          document.getElementById('a-temp').value = 0.3;
         }
-      } catch (err) {
-        console.error('Error loading agent config:', err);
-        document.getElementById('agent-config-form').reset();
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // Toggle Webhook listening status
-    async function toggleClientWebhook(phoneId, isChecked) {
+    async function saveAgent(e) {
+      e.preventDefault();
+      if (!clientId) return alert('Select a client first.');
+      const btn = document.getElementById('agent-save-btn');
+      const msg = document.getElementById('agent-msg');
+      btn.disabled = true; btn.textContent = 'Saving…';
       try {
-        await fetch(`/api/clients/${phoneId}/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ is_listening: isChecked })
+        const r = await fetch('/api/agents', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            name: document.getElementById('a-name').value.trim(),
+            model_name: document.getElementById('a-model').value,
+            temperature: parseFloat(document.getElementById('a-temp').value),
+            system_prompt: document.getElementById('a-prompt').value.trim(),
+          })
         });
-      } catch (err) {
-        console.error('Error toggling webhook:', err);
-      }
-    }
-
-    // Onboard Client
-    async function onboardClient(event) {
-      event.preventDefault();
-      const payload = {
-        name: document.getElementById('client-name').value.trim(),
-        phone_number_id: document.getElementById('client-phone-id').value.trim(),
-        app_id: document.getElementById('client-app-id').value.trim(),
-        app_secret: document.getElementById('client-app-secret').value.trim(),
-        whatsapp_business_id: document.getElementById('client-business-id').value.trim(),
-        webhook_verify_token: document.getElementById('client-verify-token').value.trim(),
-        system_access_token: document.getElementById('client-access-token').value.trim(),
-      };
-
-      try {
-        const res = await fetch('/api/clients', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        
-        if (res.ok) {
-          alert(data.message);
-          document.getElementById('onboard-client-form').reset();
-          await fetchClients();
-          changeActiveClient();
+        const d = await r.json();
+        if (r.ok) {
+          msg.innerHTML = '<span style="color:var(--success);">✅ Agent configuration saved! Bot is now active.</span>';
+          loadClients(); // refresh agent badges in table
         } else {
-          alert('Onboarding failed: ' + data.error);
+          msg.innerHTML = '<span style="color:var(--danger);">❌ ' + d.error + '</span>';
         }
       } catch (err) {
-        alert('Request error: ' + err.message);
+        msg.innerHTML = '<span style="color:var(--danger);">❌ ' + err.message + '</span>';
       }
+      btn.disabled = false; btn.textContent = 'Save Agent Configuration';
     }
 
-    // Save Agent Configuration
-    async function saveAgentConfig(event) {
-      event.preventDefault();
-      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
-
-      const payload = {
-        client_id: activeClientId,
-        name: document.getElementById('agent-name').value.trim(),
-        model_name: document.getElementById('agent-model').value,
-        temperature: parseFloat(document.getElementById('agent-temp').value),
-        system_prompt: document.getElementById('agent-prompt').value.trim(),
-      };
-
-      try {
-        const res = await fetch('/api/agents', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          alert('Agent configurations saved!');
-        } else {
-          alert('Error: ' + data.error);
-        }
-      } catch (err) {
-        alert('Error saving prompt: ' + err.message);
-      }
-    }
-
-    // Drag & Drop event listener setups
-    function setupDragAndDrop() {
-      const dropZone = document.getElementById('drop-zone');
-      if (!dropZone) return;
-
-      ['dragenter', 'dragover'].forEach(eventName => {
-        dropZone.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          dropZone.classList.add('dragover');
-        }, false);
-      });
-
-      ['dragleave', 'drop'].forEach(eventName => {
-        dropZone.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          dropZone.classList.remove('dragover');
-        }, false);
-      });
-
-      dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFiles(files);
-      }, false);
-    }
-
-    function handleFiles(files) {
-      for (const file of files) {
-        const ext = file.name.split('.').pop().toLowerCase();
-        if (['pdf', 'docx', 'txt'].includes(ext)) {
-          // Check for duplicate in selection
-          if (!selectedFiles.some(f => f.file.name === file.name && f.file.size === file.size)) {
-            selectedFiles.push({
-              file: file,
-              status: 'pending',
-              errorMsg: ''
-            });
-          }
-        } else {
-          alert(`File "${file.name}" has an unsupported format. Only PDF, DOCX, and TXT are supported.`);
-        }
-      }
-      renderFileList();
-    }
-
-    function handleFileSelection(event) {
-      const files = event.target.files;
-      handleFiles(files);
-      event.target.value = ''; // Clear value to allow re-selecting same files
-    }
-
-    function removeFile(index) {
-      selectedFiles.splice(index, 1);
-      renderFileList();
-    }
-
-    function formatBytes(bytes, decimals = 2) {
-      if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const dm = decimals < 0 ? 0 : decimals;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    }
-
-    function renderFileList() {
-      const listContainer = document.getElementById('selected-files-list');
-      if (!listContainer) return;
-      listContainer.innerHTML = '';
-
-      selectedFiles.forEach((fileObj, idx) => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        
-        let statusBadge = '';
-        if (fileObj.status === 'pending') {
-          statusBadge = '<span class="badge info">Ready</span>';
-        } else if (fileObj.status === 'reading') {
-          statusBadge = '<span class="badge warning">Reading...</span>';
-        } else if (fileObj.status === 'uploading') {
-          statusBadge = '<span class="badge warning" style="background: rgba(79, 70, 229, 0.1); color: var(--primary);">Vectorizing...</span>';
-        } else if (fileObj.status === 'success') {
-          statusBadge = '<span class="badge success">✅ Done</span>';
-        } else if (fileObj.status === 'error') {
-          statusBadge = `<span class="badge danger" title="${fileObj.errorMsg}">❌ Failed</span>`;
-        }
-
-        const showRemove = fileObj.status === 'pending' || fileObj.status === 'error';
-
-        item.innerHTML = `
-          <div class="file-info">
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color: var(--text-muted); min-width: 18px;">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <div style="min-width: 0;">
-              <div class="file-name" title="${fileObj.file.name}">${fileObj.file.name}</div>
-              <div class="file-size">${formatBytes(fileObj.file.size)}</div>
-            </div>
-          </div>
-          <div class="file-status">
-            ${statusBadge}
-            ${showRemove ? `
-              <button type="button" class="btn-remove" onclick="removeFile(${idx})">
-                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            ` : ''}
-          </div>
-        `;
-        listContainer.appendChild(item);
-      });
-
-      const uploadBtn = document.getElementById('upload-doc-btn');
-      if (uploadBtn) {
-        const hasPending = selectedFiles.some(f => f.status === 'pending');
-        uploadBtn.disabled = !hasPending;
-      }
-    }
-
-    async function uploadDocuments(event) {
-      event.preventDefault();
-      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
-
-      const pendingFiles = selectedFiles.filter(f => f.status === 'pending');
-      if (pendingFiles.length === 0) return;
-
-      const uploadBtn = document.getElementById('upload-doc-btn');
-      const statusDiv = document.getElementById('upload-status');
-      
-      // Disable UI elements
-      uploadBtn.disabled = true;
-      document.getElementById('doc-file-input').disabled = true;
-      document.querySelectorAll('.btn-remove').forEach(b => b.style.display = 'none');
-
-      statusDiv.textContent = `Processing 0 of ${pendingFiles.length} files...`;
-
-      let successCount = 0;
-      let failCount = 0;
-
-      for (let i = 0; i < selectedFiles.length; i++) {
-        const fileObj = selectedFiles[i];
-        if (fileObj.status !== 'pending') continue;
-
-        fileObj.status = 'reading';
-        renderFileList();
-
-        try {
-          const base64Data = await readFileAsBase64(fileObj.file);
-          
-          fileObj.status = 'uploading';
-          renderFileList();
-
-          const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_id: activeClientId,
-              file_name: fileObj.file.name,
-              file_data: base64Data
-            })
-          });
-
-          const data = await res.json();
-          if (res.ok) {
-            fileObj.status = 'success';
-            successCount++;
-          } else {
-            fileObj.status = 'error';
-            fileObj.errorMsg = data.error || 'Ingestion failed';
-            failCount++;
-          }
-        } catch (err) {
-          fileObj.status = 'error';
-          fileObj.errorMsg = err.message || 'Connection error';
-          failCount++;
-        }
-
-        renderFileList();
-        statusDiv.textContent = `Processed ${successCount + failCount} of ${pendingFiles.length} files...`;
-      }
-
-      // Re-enable input
-      document.getElementById('doc-file-input').disabled = false;
-      
-      if (failCount === 0) {
-        statusDiv.innerHTML = `<span style="color:var(--success);">✅ Successfully vectorized and saved all ${successCount} files into Knowledge Base!</span>`;
-        setTimeout(() => {
-          selectedFiles = selectedFiles.filter(f => f.status !== 'success');
-          renderFileList();
-          statusDiv.textContent = '';
-        }, 4000);
-      } else {
-        statusDiv.innerHTML = `<span style="color:var(--danger);">⚠️ Vectorization finished: ${successCount} succeeded, ${failCount} failed.</span>`;
-      }
-
-      loadStats();
-    }
-
-    function readFileAsBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        reader.readAsDataURL(file);
-      });
-    }
-
-    // Launch Campaign
-    async function launchCampaign(event) {
-      event.preventDefault();
-      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
-
-      const cleanList = document.getElementById('camp-recipients').value
-        .split(',')
-        .map(num => num.trim())
-        .filter(num => num.length > 0);
-
-      let components = null;
-      const compText = document.getElementById('camp-components').value.trim();
-      if (compText) {
-        try {
-          components = JSON.parse(compText);
-        } catch (e) {
-          return alert('Invalid Component variables JSON formatting!');
-        }
-      }
-
-      const payload = {
-        client_id: activeClientId,
-        name: document.getElementById('camp-name').value.trim(),
-        template_name: document.getElementById('camp-template').value.trim(),
-        language_code: document.getElementById('camp-lang').value.trim(),
-        recipients: cleanList,
-        components
-      };
-
-      try {
-        const res = await fetch('/api/campaigns', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        if (res.ok) {
-          alert('Campaign launched! Messages enqueued in BullMQ.');
-          document.getElementById('campaign-form').reset();
-        } else {
-          alert('Failed launching: ' + data.error);
-        }
-      } catch (err) {
-        alert('Error: ' + err.message);
-      }
-    }
-
-    // Fetch Stats
+    // ═══════════ STATS ══════════
     async function loadStats() {
-      if (!activeClientId) return;
+      if (!clientId) return;
       try {
-        const res = await fetch(`/api/stats?client_id=${activeClientId}`);
-        const data = await res.json();
-        document.getElementById('stat-kb-chunks').textContent = data.totalDocuments || 0;
-        document.getElementById('stat-chat-sessions').textContent = data.totalConversations || 0;
-        document.getElementById('system-uptime').textContent = `Uptime: ${data.uptime}`;
-      } catch (err) {
-        console.error('Error fetching stats:', err);
+        const r = await fetch('/api/stats?client_id=' + clientId);
+        const d = await r.json();
+        document.getElementById('s-kb').textContent = d.totalDocuments ?? '—';
+        document.getElementById('s-chats').textContent = d.totalConversations ?? '—';
+        document.getElementById('uptime-label').textContent = 'Uptime: ' + (d.uptime || '—');
+      } catch (e) { console.error(e); }
+    }
+
+    // ═══════════ FILE UPLOAD ═════
+    function initDnD() {
+      const dz = document.getElementById('drop-zone');
+      if (!dz) return;
+      ['dragenter','dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
+      ['dragleave','drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
+      dz.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+    }
+
+    function handleFileSelect(e) { addFiles(e.target.files); e.target.value = ''; }
+
+    function addFiles(files) {
+      for (const f of files) {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf','docx','txt'].includes(ext)) { alert(f.name + ' — unsupported. Only PDF, DOCX, TXT.'); continue; }
+        if (!selFiles.some(x => x.file.name === f.name && x.file.size === f.size))
+          selFiles.push({ file: f, status: 'pending', err: '' });
+      }
+      renderFiles();
+    }
+
+    function removeFile(i) { selFiles.splice(i, 1); renderFiles(); }
+
+    function fmtSize(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+      return (b/1048576).toFixed(1) + ' MB';
+    }
+
+    function renderFiles() {
+      const ul = document.getElementById('file-list');
+      ul.innerHTML = '';
+      selFiles.forEach((f, i) => {
+        const div = document.createElement('div');
+        div.className = 'fitem';
+        const badge = {
+          pending:   '<span class="badge info">Ready</span>',
+          reading:   '<span class="badge warn">Reading…</span>',
+          uploading: '<span class="badge warn" style="background:var(--primary-glow);color:var(--primary);">Vectorizing…</span>',
+          success:   '<span class="badge ok">✅ Done</span>',
+          error:     `<span class="badge err" title="${f.err}">❌ Failed</span>`,
+        }[f.status] || '';
+        const canRemove = f.status === 'pending' || f.status === 'error';
+        div.innerHTML = `
+          <div class="finfo">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:var(--muted);flex-shrink:0"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <div>
+              <div class="fname" title="${f.file.name}">${f.file.name}</div>
+              <div class="fsize">${fmtSize(f.file.size)}</div>
+            </div>
+          </div>
+          <div class="factions">
+            ${badge}
+            ${canRemove ? `<button type="button" class="btn-rm" onclick="removeFile(${i})">
+              <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M4 7h16M10 3h4a1 1 0 011 1v1H9V4a1 1 0 011-1z"/></svg>
+            </button>` : ''}
+          </div>`;
+        ul.appendChild(div);
+      });
+      const btn = document.getElementById('upload-btn');
+      if (btn) btn.disabled = !selFiles.some(f => f.status === 'pending');
+    }
+
+    function readB64(file) {
+      return new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = () => rej(new Error('Read failed'));
+        r.readAsDataURL(file);
+      });
+    }
+
+    async function uploadFiles(e) {
+      e.preventDefault();
+      if (!clientId) return alert('Select a client first.');
+      const pending = selFiles.filter(f => f.status === 'pending');
+      if (!pending.length) return;
+      const btn = document.getElementById('upload-btn');
+      const msg = document.getElementById('upload-msg');
+      btn.disabled = true;
+      let ok = 0, fail = 0;
+
+      for (let i = 0; i < selFiles.length; i++) {
+        const fo = selFiles[i];
+        if (fo.status !== 'pending') continue;
+        fo.status = 'reading'; renderFiles();
+        msg.textContent = `Processing ${ok + fail + 1} of ${pending.length}…`;
+        try {
+          const b64 = await readB64(fo.file);
+          fo.status = 'uploading'; renderFiles();
+          const r = await fetch('/api/upload', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, file_name: fo.file.name, file_data: b64 })
+          });
+          const d = await r.json();
+          if (r.ok) { fo.status = 'success'; ok++; }
+          else { fo.status = 'error'; fo.err = d.error || 'Server error'; fail++; }
+        } catch (err) { fo.status = 'error'; fo.err = err.message; fail++; }
+        renderFiles();
+      }
+
+      if (fail === 0) {
+        msg.innerHTML = `<span style="color:var(--success);">✅ All ${ok} files vectorized and saved to Knowledge Base!</span>`;
+        setTimeout(() => { selFiles = selFiles.filter(f => f.status !== 'success'); renderFiles(); msg.textContent = ''; loadStats(); }, 5000);
+      } else {
+        msg.innerHTML = `<span style="color:var(--danger);">⚠️ ${ok} succeeded, ${fail} failed.</span>`;
+        btn.disabled = false;
+        loadStats();
       }
     }
 
-    // Load Sessions
+    // ═══════════ CAMPAIGNS ══════
+    async function launchCampaign(e) {
+      e.preventDefault();
+      if (!clientId) return alert('Select a client first.');
+      const btn = document.getElementById('campaign-btn');
+      const msg = document.getElementById('camp-msg');
+      btn.disabled = true; btn.textContent = 'Enqueuing…';
+
+      const recip = document.getElementById('camp-recip').value.split(',').map(s => s.trim()).filter(Boolean);
+      let comp = null;
+      const cv = document.getElementById('camp-vars').value.trim();
+      if (cv) { try { comp = JSON.parse(cv); } catch { return alert('Invalid JSON in template variables.'); } }
+
+      try {
+        const r = await fetch('/api/campaigns', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            name: document.getElementById('camp-name').value.trim(),
+            template_name: document.getElementById('camp-template').value.trim(),
+            language_code: document.getElementById('camp-lang').value.trim(),
+            recipients: recip, components: comp
+          })
+        });
+        const d = await r.json();
+        if (r.ok) {
+          msg.innerHTML = '<span style="color:var(--success);">✅ Campaign launched! Messages enqueued via BullMQ.</span>';
+          document.getElementById('campaign-form').reset();
+          document.getElementById('camp-lang').value = 'en';
+        } else {
+          msg.innerHTML = '<span style="color:var(--danger);">❌ ' + d.error + '</span>';
+        }
+      } catch (err) {
+        msg.innerHTML = '<span style="color:var(--danger);">❌ ' + err.message + '</span>';
+      }
+      btn.disabled = false; btn.textContent = '🚀 Launch Campaign';
+    }
+
+    // ═══════════ SESSIONS ═══════
     async function loadSessions() {
-      if (!activeClientId) return;
+      if (!clientId) return;
+      const ul = document.getElementById('sessions-list');
+      ul.innerHTML = '<div class="empty-state" style="padding:20px;font-size:13px;">Loading…</div>';
       try {
-        const res = await fetch(`/api/sessions?client_id=${activeClientId}`);
-        const sessions = await res.json();
-        const container = document.getElementById('session-items-list');
-        container.innerHTML = '';
-        
-        if (sessions.length === 0) {
-          container.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 13px;">No active sessions found.</div>';
+        const r = await fetch('/api/sessions?client_id=' + clientId);
+        const sessions = await r.json();
+        ul.innerHTML = '';
+        if (!sessions.length) {
+          ul.innerHTML = '<div class="empty-state" style="padding:24px;font-size:13px;">No sessions yet</div>';
           return;
         }
-
-        sessions.forEach(sess => {
-          const item = document.createElement('div');
-          item.className = 'session-item';
-          item.onclick = () => loadChat(sess.session_id);
-          item.id = `session-${sess.session_id}`;
-          
-          const phone = sess.customer_phone;
-          const date = new Date(sess.last_interaction).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-          const statusText = sess.session_status === 'active' ? 'AI Bot' : (sess.session_status === 'paused' ? 'Paused' : 'Manual');
-          const badgeClass = sess.session_status === 'active' ? 'success' : (sess.session_status === 'paused' ? 'warning' : 'danger');
-
-          item.innerHTML = `
-            <div class="phone">${phone}</div>
-            <div class="meta-row">
-              <span>${sess.msg_count} messages</span>
-              <span class="badge ${badgeClass}">${statusText}</span>
+        sessions.forEach(s => {
+          const d = document.createElement('div');
+          d.className = 'sess-item';
+          d.id = 'sess-' + s.session_id;
+          d.onclick = () => loadChat(s.session_id, s.customer_phone);
+          const status = s.session_status === 'active' ? '<span class="badge ok">Bot Active</span>' :
+                         s.session_status === 'paused' ? '<span class="badge warn">Paused</span>' :
+                         '<span class="badge idle">Inactive</span>';
+          const ts = new Date(s.last_interaction).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+          d.innerHTML = `
+            <div class="sess-phone">${s.customer_phone}</div>
+            <div class="sess-meta">
+              <span>${s.msg_count} messages</span>${status}
             </div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Last: ${date}</div>
-          `;
-          container.appendChild(item);
+            <div style="font-size:10px;color:var(--muted);margin-top:2px;">${ts}</div>`;
+          ul.appendChild(d);
         });
-      } catch (err) {
-        console.error('Error loading sessions:', err);
-      }
+      } catch (e) { console.error(e); }
     }
 
-    // Load Chat messages
-    async function loadChat(sessionId) {
-      document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
-      const activeItem = document.getElementById(`session-${sessionId}`);
-      if (activeItem) activeItem.classList.add('active');
-
-      document.getElementById('chat-empty-state').style.display = 'none';
-      document.getElementById('chat-active-state').style.display = 'flex';
-      
-      const messagesContainer = document.getElementById('chat-messages-container');
-      messagesContainer.innerHTML = '<div>Loading conversation history...</div>';
-
+    async function loadChat(sessionId, phone) {
+      document.querySelectorAll('.sess-item').forEach(i => i.classList.remove('active'));
+      const si = document.getElementById('sess-' + sessionId);
+      if (si) si.classList.add('active');
+      const topbar = document.getElementById('chat-topbar');
+      const body = document.getElementById('chat-body');
+      topbar.textContent = phone || 'Conversation';
+      body.innerHTML = '<div class="empty-state">Loading messages…</div>';
       try {
-        const res = await fetch(`/api/sessions/${sessionId}?client_id=${activeClientId}`);
-        const messages = await res.json();
-        messagesContainer.innerHTML = '';
-
-        messages.forEach(msg => {
-          const bubble = document.createElement('div');
-          const type = msg.message.type === 'human' ? 'human' : 'ai';
-          bubble.className = `chat-bubble ${type}`;
-          
-          const content = msg.message.content.replace(/\n/g, '<br>');
-          bubble.innerHTML = `${content}`;
-          messagesContainer.appendChild(bubble);
+        const r = await fetch(`/api/sessions/${sessionId}?client_id=${clientId}`);
+        const msgs = await r.json();
+        body.innerHTML = '';
+        if (!msgs.length) { body.innerHTML = '<div class="empty-state">No messages in this session.</div>'; return; }
+        msgs.forEach(m => {
+          const b = document.createElement('div');
+          const type = m.message.type === 'human' ? 'human' : 'ai';
+          b.className = 'bubble ' + type;
+          b.innerHTML = m.message.content.replace(/\n/g, '<br>');
+          body.appendChild(b);
         });
-        
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-      } catch (err) {
-        console.error('Error loading chat transcript:', err);
-        messagesContainer.innerHTML = '<div>Error loading transcript.</div>';
-      }
+        body.scrollTop = body.scrollHeight;
+      } catch (e) { body.innerHTML = '<div class="empty-state">Error loading messages.</div>'; }
     }
 
-    // Perform Vector Search sandbox query
-    async function performSandboxSearch() {
-      const query = document.getElementById('sandbox-search-input').value.trim();
-      if (!query || !activeClientId) return;
-
-      const container = document.getElementById('sandbox-results-container');
-      container.innerHTML = '<div class="empty-state">Searching isolated vector DB chunks...</div>';
-
+    // ═══════════ SANDBOX ════════
+    async function sbSearch() {
+      const q = document.getElementById('sb-input').value.trim();
+      if (!q || !clientId) return;
+      const res = document.getElementById('sb-results');
+      res.innerHTML = '<div class="empty-state" style="padding:24px;">Searching…</div>';
       try {
-        const res = await fetch(`/api/search?client_id=${activeClientId}&q=${encodeURIComponent(query)}`);
-        const results = await res.json();
-        container.innerHTML = '';
-
-        if (results.length === 0) {
-          container.innerHTML = '<div class="empty-state">No matching vector chunks found.</div>';
-          return;
-        }
-
-        results.forEach(item => {
+        const r = await fetch(`/api/search?client_id=${clientId}&q=${encodeURIComponent(q)}`);
+        const data = await r.json();
+        res.innerHTML = '';
+        if (!data.length) { res.innerHTML = '<div class="empty-state" style="padding:24px;">No matching chunks found.</div>'; return; }
+        data.forEach(item => {
           const card = document.createElement('div');
-          card.className = 'result-card';
-          const score = (item.similarity * 100).toFixed(1) + '% similarity';
-
+          card.className = 'res-card';
           card.innerHTML = `
-            <div class="result-card-header">
-              <div class="source">Source File: ${item.metadata?.source || 'Uploaded Document'}</div>
-              <div class="score">${score}</div>
+            <div class="res-head">
+              <span class="res-src">📄 ${item.metadata?.source || 'Document'}</span>
+              <span class="res-score">${(item.similarity * 100).toFixed(1)}% match</span>
             </div>
-            <div class="content">${item.content}</div>
-          `;
-          container.appendChild(card);
+            <div class="res-body">${item.content}</div>`;
+          res.appendChild(card);
         });
-      } catch (err) {
-        console.error('Error querying vector DB sandbox:', err);
-        container.innerHTML = '<div class="empty-state">Error querying vector database.</div>';
-      }
+      } catch (e) { res.innerHTML = '<div class="empty-state" style="padding:24px;">Error: ' + e.message + '</div>'; }
     }
+    document.addEventListener('DOMContentLoaded', () => {
+      const sbInput = document.getElementById('sb-input');
+      if (sbInput) sbInput.addEventListener('keydown', e => { if (e.key === 'Enter') sbSearch(); });
+    });
   </script>
 </body>
 </html>
