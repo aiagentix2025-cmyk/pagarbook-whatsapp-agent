@@ -1776,7 +1776,11 @@
       currentChatSession = sessionId;
       currentChatPhone = phone;
 
-      const topbar = document.getElementById('chat-topbar');
+      const topbarPhone = document.getElementById('chat-topbar-phone');
+      const botControl = document.getElementById('chat-bot-control');
+      const botBadge = document.getElementById('chat-bot-badge');
+      const botToggle = document.getElementById('chat-bot-toggle');
+      const replyForm = document.getElementById('chat-reply-form');
       const body = document.getElementById('chat-body');
       
       body.innerHTML = '<div class="empty-state">Loading messages…</div>';
@@ -1787,19 +1791,20 @@
         const sessData = sessions.find(s => s.session_id === sessionId);
         const status = sessData ? sessData.session_status : 'active';
         
-        let toggleHtml = '';
+        topbarPhone.textContent = phone || 'Conversation';
+        botControl.style.display = 'flex';
+        
         if (status === 'paused') {
-          toggleHtml = `<button onclick="toggleBot('${sessionId}', 'active')" style="background:var(--success);color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:10px;">▶ Resume Bot</button>`;
+          botBadge.textContent = 'Bot Paused';
+          botBadge.className = 'badge warn';
+          botToggle.checked = true;
         } else {
-          toggleHtml = `<button onclick="toggleBot('${sessionId}', 'paused')" style="background:var(--warn);color:#555;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:10px;">⏸ Pause Bot</button>`;
+          botBadge.textContent = 'Bot Active';
+          botBadge.className = 'badge ok';
+          botToggle.checked = false;
         }
 
-        topbar.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-            <span>${phone || 'Conversation'}</span>
-            ${toggleHtml}
-          </div>
-        `;
+        replyForm.style.display = 'flex';
 
         const r = await fetch(`/api/sessions/${sessionId}?client_id=${clientId}`);
         const msgs = await r.json();
@@ -1813,7 +1818,17 @@
           body.appendChild(b);
         });
         body.scrollTop = body.scrollHeight;
-      } catch (e) { body.innerHTML = '<div class="empty-state">Error loading messages.</div>'; }
+      } catch (e) {
+        console.error(e);
+        body.innerHTML = '<div class="empty-state">Error loading messages.</div>';
+      }
+    }
+
+    async function toggleChatbotOverride() {
+      if (!currentChatSession) return;
+      const isChecked = document.getElementById('chat-bot-toggle').checked;
+      const newStatus = isChecked ? 'paused' : 'active';
+      await toggleBot(currentChatSession, newStatus);
     }
 
     let attachedMediaUrl = null;
