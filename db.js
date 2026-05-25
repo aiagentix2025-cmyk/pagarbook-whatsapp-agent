@@ -38,6 +38,16 @@ async function initCentralDb() {
         is_listening BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS public.ai_agents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_id UUID UNIQUE NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        system_prompt TEXT NOT NULL,
+        temperature NUMERIC(3,2) DEFAULT 0.3,
+        model_name VARCHAR(100) DEFAULT 'gpt-4o-mini',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('Central tables initialized successfully.');
   } catch (err) {

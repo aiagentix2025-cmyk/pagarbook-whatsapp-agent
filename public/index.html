@@ -773,6 +773,24 @@
       color: var(--danger);
       background: rgba(239, 68, 68, 0.05);
     }
+
+    /* Dashboard Command Center Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    @media (max-width: 1200px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .dashboard-col {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
   </style>
 </head>
 <body>
@@ -845,7 +863,7 @@
         <div class="stat-card">
           <div class="label">Knowledge Base Vectors</div>
           <div class="value" id="stat-kb-chunks">0</div>
-          <div class="desc">Chunck embeddings</div>
+          <div class="desc">Chunk embeddings</div>
         </div>
         <div class="stat-card">
           <div class="label">Chat Sessions</div>
@@ -859,107 +877,110 @@
         </div>
       </div>
 
-      <div class="card">
-        <h2>About Your Platform</h2>
-        <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
-          This platform enables multi-tenant database isolated WhatsApp automation. From the panel on the left, you can manage client configurations. 
-        </p>
-        <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted);">
-          Each client gets their own database dynamically provisioned inside your PostgreSQL instance, separating their knowledge base document vectors, chat logs, and campaigns.
-        </p>
-      </div>
-    </div>
-
-    <!-- TAB: Clients -->
-    <div id="tab-clients" class="tab-content">
-      <div class="card">
-        <h2>Onboard a New Client</h2>
-        <form id="onboard-client-form" onsubmit="onboardClient(event)">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Client Name / Organization</label>
-              <input type="text" id="client-name" placeholder="e.g. Umang Hospital" required>
-            </div>
-            <div class="form-group">
-              <label>WhatsApp Phone Number ID</label>
-              <input type="text" id="client-phone-id" placeholder="e.g. 1201782259675601" required>
-            </div>
-            <div class="form-group">
-              <label>Meta App ID</label>
-              <input type="text" id="client-app-id" placeholder="e.g. 1009514481606880" required>
-            </div>
-            <div class="form-group">
-              <label>Meta App Secret</label>
-              <input type="text" id="client-app-secret" placeholder="e.g. c4176c068e..." required>
-            </div>
-            <div class="form-group">
-              <label>WhatsApp Business Account ID</label>
-              <input type="text" id="client-business-id" placeholder="e.g. 1642047753726751" required>
-            </div>
-            <div class="form-group">
-              <label>Custom Webhook Verify Token</label>
-              <input type="text" id="client-verify-token" value="pagarbook_whatsapp_verify_token_2026" required>
-            </div>
-            <div class="form-group full-width">
-              <label>Permanent Access Token</label>
-              <input type="text" id="client-access-token" placeholder="EAAOW..." required>
+      <div class="dashboard-grid">
+        <!-- Left Column: Client Management -->
+        <div class="dashboard-col">
+          <!-- Card: Onboarded Clients -->
+          <div class="card" id="onboarded-clients-card">
+            <h2>Onboarded Clients</h2>
+            <div class="data-table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Client Name</th>
+                    <th>Database</th>
+                    <th>Phone ID</th>
+                    <th>Verify Token</th>
+                    <th>Listening</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-table-body">
+                  <!-- Dynamic Rows -->
+                </tbody>
+              </table>
             </div>
           </div>
-          <button type="submit" class="btn">Onboard Client & Create DB</button>
-        </form>
-      </div>
 
-      <div class="card">
-        <h2>Onboarded Clients</h2>
-        <div class="data-table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Client Name</th>
-                <th>Database</th>
-                <th>Phone Number ID</th>
-                <th>Verify Token</th>
-                <th>Webhook Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="clients-table-body">
-              <!-- Dynamic Rows -->
-            </tbody>
-          </table>
+          <!-- Card: Onboard Client -->
+          <div class="card">
+            <h2>Onboard a New Client</h2>
+            <form id="onboard-client-form" onsubmit="onboardClient(event)">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Client Name / Organization</label>
+                  <input type="text" id="client-name" placeholder="e.g. Umang Hospital" required>
+                </div>
+                <div class="form-group">
+                  <label>WhatsApp Phone Number ID</label>
+                  <input type="text" id="client-phone-id" placeholder="e.g. 1201782259675601" required>
+                </div>
+                <div class="form-group">
+                  <label>Meta App ID</label>
+                  <input type="text" id="client-app-id" placeholder="e.g. 1009514481606880" required>
+                </div>
+                <div class="form-group">
+                  <label>Meta App Secret</label>
+                  <input type="text" id="client-app-secret" placeholder="e.g. c4176c068e..." required>
+                </div>
+                <div class="form-group">
+                  <label>WhatsApp Business Account ID</label>
+                  <input type="text" id="client-business-id" placeholder="e.g. 1642047753726751" required>
+                </div>
+                <div class="form-group">
+                  <label>Custom Webhook Verify Token</label>
+                  <input type="text" id="client-verify-token" value="pagarbook_whatsapp_verify_token_2026" required>
+                </div>
+                <div class="form-group full-width">
+                  <label>Permanent Access Token</label>
+                  <input type="text" id="client-access-token" placeholder="EAAOW..." required>
+                </div>
+              </div>
+              <button type="submit" class="btn">Onboard Client & Create DB</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Right Column: Agent Configuration -->
+        <div class="dashboard-col">
+          <div class="card" id="agent-config-card">
+            <h2 id="agent-config-title">Configure Chatbot Agent</h2>
+            <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+              Configuring settings for active context: <strong id="active-context-name" style="color: var(--primary);">None selected</strong>
+            </p>
+            <form id="agent-config-form" onsubmit="saveAgentConfig(event)">
+              <div class="form-group">
+                <label>Agent Name / Persona</label>
+                <input type="text" id="agent-name" placeholder="e.g. Sakshi" required>
+              </div>
+              <div class="form-group">
+                <label>LLM Engine Model</label>
+                <select id="agent-model">
+                  <option value="gpt-4o-mini">OpenAI gpt-4o-mini (Vision + Text)</option>
+                  <option value="llama-3.1-70b-versatile">Groq Llama 3.1 70B (Fast Text)</option>
+                  <option value="mixtral-8x7b-32768">Groq Mixtral 8x7B (Low latency Text)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Response Temperature (0.0 = Precise, 1.0 = Creative)</label>
+                <input type="number" id="agent-temp" step="0.1" min="0" max="1" value="0.3" required>
+              </div>
+              <div class="form-group">
+                <label>System Prompt (Personas, Guidelines, Workflows)</label>
+                <textarea id="agent-prompt" placeholder="Define your agent identity and how they should answer..." required style="min-height: 280px;"></textarea>
+              </div>
+              <button type="submit" class="btn">Save Agent Configurations</button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- TAB: Agents -->
-    <div id="tab-agents" class="tab-content">
-      <div class="card">
-        <h2 id="agent-config-title">Configure Chatbot Agent</h2>
-        <form id="agent-config-form" onsubmit="saveAgentConfig(event)">
-          <div class="form-group">
-            <label>Agent Name / Persona</label>
-            <input type="text" id="agent-name" placeholder="e.g. Sakshi" required>
-          </div>
-          <div class="form-group">
-            <label>LLM Engine Model</label>
-            <select id="agent-model">
-              <option value="gpt-4o-mini">OpenAI gpt-4o-mini (Vision + Text)</option>
-              <option value="llama-3.1-70b-versatile">Groq Llama 3.1 70B (Fast Text)</option>
-              <option value="mixtral-8x7b-32768">Groq Mixtral 8x7B (Low latency Text)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Response Temperature (0.0 = Precise, 1.0 = Creative)</label>
-            <input type="number" id="agent-temp" step="0.1" min="0" max="1" value="0.3" required>
-          </div>
-          <div class="form-group">
-            <label>System Prompt (Personas, Guidelines, Workflows)</label>
-            <textarea id="agent-prompt" placeholder="Define your agent identity and how they should answer..." required></textarea>
-          </div>
-          <button type="submit" class="btn">Save Agent Configurations</button>
-        </form>
-      </div>
-    </div>
+    <!-- TAB: Clients Placeholder -->
+    <div id="tab-clients" class="tab-content"></div>
+
+    <!-- TAB: Agents Placeholder -->
+    <div id="tab-agents" class="tab-content"></div>
 
     <!-- TAB: Documents -->
     <div id="tab-documents" class="tab-content">
@@ -1090,10 +1111,23 @@
 
     // Switch Tabs
     function switchTab(tabId) {
+      let targetTab = tabId;
+      let scrollToId = null;
+
+      if (tabId === 'clients') {
+        targetTab = 'dashboard';
+        scrollToId = 'onboarded-clients-card';
+      } else if (tabId === 'agents') {
+        targetTab = 'dashboard';
+        scrollToId = 'agent-config-card';
+      }
+
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
       
-      document.getElementById(`tab-${tabId}`).classList.add('active');
+      document.getElementById(`tab-${targetTab}`).classList.add('active');
+      
+      // Highlight sidebar item representing current selection
       const clickedItem = Array.from(document.querySelectorAll('.nav-item')).find(item => item.textContent.trim().toLowerCase().includes(tabId.toLowerCase()));
       if (clickedItem) clickedItem.classList.add('active');
 
@@ -1106,11 +1140,19 @@
         'chats': 'Active Chat Session Transcripts',
         'knowledge': 'Vector KB Similarity Sandbox'
       };
-      document.getElementById('page-title').textContent = titles[tabId];
+      document.getElementById('page-title').textContent = titles[targetTab];
 
-      if (tabId === 'dashboard') loadStats();
-      if (tabId === 'chats') loadSessions();
-      if (tabId === 'agents') loadAgentConfig();
+      if (targetTab === 'dashboard') {
+        loadStats();
+        loadAgentConfig();
+      }
+      if (targetTab === 'chats') loadSessions();
+
+      if (scrollToId) {
+        setTimeout(() => {
+          document.getElementById(scrollToId)?.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
+      }
     }
 
     // Fetch Clients List
@@ -1181,7 +1223,19 @@
 
     // Fetch and Populate Agent Configurations
     async function loadAgentConfig() {
-      if (!activeClientId) return;
+      const contextLabel = document.getElementById('active-context-name');
+      if (!activeClientId) {
+        if (contextLabel) contextLabel.textContent = 'None selected';
+        return;
+      }
+      
+      if (contextLabel && clientsList.length > 0) {
+        const activeClient = clientsList.find(c => c.id === activeClientId);
+        if (activeClient) {
+          contextLabel.textContent = activeClient.name;
+        }
+      }
+
       try {
         const res = await fetch(`/api/agents?client_id=${activeClientId}`);
         if (res.ok) {
