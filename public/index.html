@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WhatsApp AI Platform — Admin Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SheetJS for Excel/CSV parsing -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg: #f0f2f8;
@@ -456,22 +458,171 @@
 
       <!-- ─── TAB: CAMPAIGNS ────────────────────────────────────── -->
       <div class="tab" id="tab-campaigns">
+        <style>
+          .camp-step { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+          .camp-step-num { width:28px; height:28px; border-radius:50%; background:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; flex-shrink:0; }
+          .camp-step-label { font-size:15px; font-weight:700; }
+
+          /* Template picker */
+          .tpl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-top:14px; max-height:300px; overflow-y:auto; }
+          .tpl-card { border:2px solid var(--border); border-radius:12px; padding:14px 16px; cursor:pointer; transition:0.2s; background:#fff; }
+          .tpl-card:hover { border-color:var(--primary); background:var(--primary-glow); }
+          .tpl-card.selected { border-color:var(--primary); background:var(--primary-glow); }
+          .tpl-name { font-weight:700; font-size:14px; margin-bottom:4px; }
+          .tpl-meta { font-size:11px; color:var(--muted); margin-bottom:8px; }
+          .tpl-body { font-size:12px; color:var(--text); line-height:1.5; max-height:60px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+          .tpl-loading { color:var(--muted); font-size:13px; padding:20px; text-align:center; }
+
+          /* Template preview */
+          .tpl-preview { background:linear-gradient(135deg,#e7f7e9,#d1f5d9); border-radius:16px; padding:20px; position:relative; max-width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+          .tpl-preview-header { font-weight:700; font-size:14px; margin-bottom:8px; color:#1a1a1a; }
+          .tpl-preview-body { font-size:13px; color:#333; line-height:1.6; margin-bottom:8px; white-space:pre-wrap; }
+          .tpl-preview-footer { font-size:11px; color:#777; }
+          .tpl-preview-bubble-tail { position:absolute; bottom:-8px; left:16px; width:0; height:0; border-left:8px solid transparent; border-right:8px solid transparent; border-top:8px solid #d1f5d9; }
+          .wa-phone-frame { background:#e5ddd5; border-radius:14px; padding:16px; }
+          .wa-phone-bar { font-size:12px; font-weight:700; color:#333; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+
+          /* Recipients table */
+          .leads-table { width:100%; border-collapse:collapse; font-size:13px; }
+          .leads-table th { padding:8px 12px; background:#f5f7ff; border-bottom:1px solid var(--border); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); text-align:left; }
+          .leads-table td { padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+          .leads-table tr:last-child td { border-bottom:none; }
+          .leads-table tr:hover td { background:#f9faff; }
+          .leads-wrap { max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; margin-top:12px; }
+
+          /* Input sub-tabs */
+          .sub-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+          .sub-tab { flex:1; padding:10px; text-align:center; font-size:13px; font-weight:600; cursor:pointer; color:var(--muted); background:#fff; transition:0.2s; border:none; font-family:inherit; }
+          .sub-tab.active { background:var(--primary); color:#fff; }
+          .sub-pane { display:none; }
+          .sub-pane.active { display:block; }
+
+          /* Var builder */
+          .var-row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+          .var-row label { font-size:12px; font-weight:600; width:110px; flex-shrink:0; color:var(--muted); }
+          .var-row input { flex:1; }
+        </style>
+
+        <!-- STEP 1: Template -->
         <div class="card fade-in">
-          <h2>
-            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
-            Dispatch Bulk Template Campaign
-          </h2>
-          <form id="campaign-form" onsubmit="launchCampaign(event)">
-            <div class="two-col">
-              <div class="fg"><label>Campaign Title</label><input id="camp-name" placeholder="e.g. Product Launch Blast" required></div>
-              <div class="fg"><label>WhatsApp Template Name (Meta Approved)</label><input id="camp-template" placeholder="e.g. product_launch_v1" required></div>
-              <div class="fg"><label>Language Code</label><input id="camp-lang" value="en" required></div>
-              <div class="fg"><label>Recipients (comma-separated with country code)</label><textarea id="camp-recip" placeholder="+919876543210, +918800112233" required></textarea></div>
-              <div class="fg full"><label>Template Variables (JSON Array, optional)</label><textarea id="camp-vars" placeholder='[{"type":"body","parameters":[{"type":"text","text":"Sakshi"}]}]'></textarea></div>
+          <div class="camp-step">
+            <div class="camp-step-num">1</div>
+            <div class="camp-step-label">Select a Meta-Approved Template</div>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+            <button class="btn sec" onclick="fetchTemplates()" id="tpl-refresh-btn">🔄 Load Templates from Meta</button>
+            <span id="tpl-status" style="font-size:13px; color:var(--muted);">Click to load your approved templates</span>
+          </div>
+          <div id="tpl-grid" class="tpl-grid"></div>
+          <!-- Hidden selected template fields -->
+          <input type="hidden" id="sel-tpl-name">
+          <input type="hidden" id="sel-tpl-lang">
+        </div>
+
+        <!-- STEP 2: Campaign Info -->
+        <div class="card fade-in">
+          <div class="camp-step">
+            <div class="camp-step-num">2</div>
+            <div class="camp-step-label">Campaign Details</div>
+          </div>
+          <div class="two-col">
+            <div>
+              <div class="fg"><label>Campaign Title</label><input id="camp-name" placeholder="e.g. VMS Product Launch" required></div>
+              <div class="fg"><label>Selected Template</label>
+                <input id="camp-tpl-display" placeholder="— select from step 1 —" readonly style="background:#f8faff;cursor:not-allowed;">
+              </div>
+              <div class="fg"><label>Language Code</label>
+                <input id="camp-lang" value="en_US" style="width:120px;">
+              </div>
+              <!-- Variable builder (shown when template has variables) -->
+              <div id="var-builder" style="display:none;">
+                <div style="font-size:13px; font-weight:700; margin-bottom:10px; color:var(--text);">Template Variables</div>
+                <div id="var-rows"></div>
+              </div>
             </div>
-            <button type="submit" class="btn" id="campaign-btn">🚀 Launch Campaign</button>
-            <div id="camp-msg" style="margin-top:12px; font-size:13px;"></div>
-          </form>
+            <!-- WhatsApp Preview -->
+            <div>
+              <div style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Live Preview</div>
+              <div class="wa-phone-frame">
+                <div class="wa-phone-bar">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                  WhatsApp Message Preview
+                </div>
+                <div class="tpl-preview" id="tpl-preview-bubble">
+                  <div class="tpl-preview-body" id="preview-body" style="color:#aaa; font-style:italic;">Select a template to preview</div>
+                  <div class="tpl-preview-bubble-tail"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: Recipients -->
+        <div class="card fade-in">
+          <div class="camp-step">
+            <div class="camp-step-num">3</div>
+            <div class="camp-step-label">Add Recipients</div>
+          </div>
+          <div class="sub-tabs">
+            <button class="sub-tab active" onclick="switchLeadTab('manual', this)">✏️ Manual Entry</button>
+            <button class="sub-tab" onclick="switchLeadTab('csv', this)">📄 CSV / Excel Upload</button>
+            <button class="sub-tab" onclick="switchLeadTab('paste', this)">📋 Paste Numbers</button>
+          </div>
+
+          <!-- Manual Entry -->
+          <div class="sub-pane active" id="pane-manual">
+            <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+              <div class="fg" style="margin:0; flex:1; min-width:160px;"><label>Name</label><input id="lead-name" placeholder="e.g. Rahul Sharma"></div>
+              <div class="fg" style="margin:0; flex:1; min-width:180px;"><label>Phone (with country code)</label><input id="lead-phone" placeholder="+919876543210"></div>
+              <button type="button" class="btn" onclick="addManualLead()" style="height:42px; align-self:flex-end;">+ Add Lead</button>
+            </div>
+          </div>
+
+          <!-- CSV / Excel -->
+          <div class="sub-pane" id="pane-csv">
+            <div style="border:2px dashed var(--border); border-radius:10px; padding:28px; text-align:center; cursor:pointer; background:#fafbff;" onclick="document.getElementById('csv-input').click()" id="csv-drop">
+              <svg width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="color:var(--muted); margin-bottom:8px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+              <p style="font-size:14px; color:var(--muted);">Drop your <strong>CSV or Excel (.xlsx)</strong> file here, or click to browse</p>
+              <p style="font-size:11px; color:var(--muted); margin-top:6px;">Required columns: <code>phone</code> (with country code). Optional: <code>name</code></p>
+              <input type="file" id="csv-input" accept=".csv,.xlsx,.xls" style="display:none;" onchange="parseCsvExcel(event)">
+            </div>
+            <div id="csv-parse-msg" style="margin-top:10px; font-size:13px;"></div>
+          </div>
+
+          <!-- Paste -->
+          <div class="sub-pane" id="pane-paste">
+            <div class="fg" style="margin:0;">
+              <label>Paste phone numbers (one per line or comma-separated, with country code)</label>
+              <textarea id="paste-phones" placeholder="+919876543210&#10;+918800112233&#10;+917777888899" style="min-height:120px;"></textarea>
+            </div>
+            <button type="button" class="btn sec" onclick="importPastedNumbers()" style="margin-top:8px;">Import Numbers</button>
+          </div>
+
+          <!-- Leads Table -->
+          <div style="margin-top:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div style="font-size:13px; font-weight:700;">Recipients List <span id="leads-count" style="background:var(--primary-glow); color:var(--primary); padding:2px 8px; border-radius:20px; font-size:12px;">0</span></div>
+              <button type="button" class="btn sec" onclick="clearLeads()" style="padding:6px 14px; font-size:12px;">Clear All</button>
+            </div>
+            <div class="leads-wrap">
+              <table class="leads-table">
+                <thead><tr><th>#</th><th>Name</th><th>Phone</th><th></th></tr></thead>
+                <tbody id="leads-tbody"><tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted);">No recipients added yet</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Launch -->
+        <div class="card fade-in" style="background: linear-gradient(135deg, #f0f2ff, #e8fff3); border-color: rgba(99,102,241,0.2);">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+            <div>
+              <div style="font-size:16px; font-weight:800; margin-bottom:4px;">Ready to Launch?</div>
+              <div id="launch-summary" style="font-size:13px; color:var(--muted);">Complete steps 1–3 above to enable launch</div>
+            </div>
+            <button class="btn" id="campaign-btn" onclick="launchCampaign()" style="padding:14px 32px; font-size:15px;">🚀 Launch Campaign</button>
+          </div>
+          <div id="camp-msg" style="margin-top:12px; font-size:13px;"></div>
         </div>
       </div>
 
@@ -844,34 +995,293 @@
     }
 
     // ═══════════ CAMPAIGNS ══════
-    async function launchCampaign(e) {
-      e.preventDefault();
+    // ═══════════════════════════════════════════
+    // CAMPAIGNS — Templates, Leads, Launch
+    // ═══════════════════════════════════════════
+    let metaTemplates = [];
+    let selectedTemplate = null;
+    let leads = []; // [{name, phone}]
+
+    // Fetch approved Meta templates
+    async function fetchTemplates() {
       if (!clientId) return alert('Select a client first.');
+      const btn = document.getElementById('tpl-refresh-btn');
+      const status = document.getElementById('tpl-status');
+      const grid = document.getElementById('tpl-grid');
+      btn.disabled = true; btn.textContent = '⏳ Loading…';
+      status.textContent = 'Fetching templates from Meta Graph API…';
+      grid.innerHTML = '<div class="tpl-loading">Loading your WhatsApp templates…</div>';
+      try {
+        const r = await fetch('/api/templates?client_id=' + clientId);
+        const data = await r.json();
+        if (!r.ok) { status.innerHTML = '<span style="color:var(--danger);">❌ ' + (data.error || 'Error') + '</span>'; grid.innerHTML = ''; return; }
+        metaTemplates = data;
+        const approved = data.filter(t => t.status === 'APPROVED');
+        status.innerHTML = `<span style="color:var(--success);">✅ ${approved.length} approved template${approved.length!==1?'s':''} found (${data.length} total)</span>`;
+        renderTemplates(data);
+      } catch (e) {
+        status.innerHTML = '<span style="color:var(--danger);">❌ ' + e.message + '</span>';
+        grid.innerHTML = '';
+      }
+      btn.disabled = false; btn.textContent = '🔄 Refresh Templates';
+    }
+
+    function renderTemplates(templates) {
+      const grid = document.getElementById('tpl-grid');
+      grid.innerHTML = '';
+      if (!templates.length) { grid.innerHTML = '<div class="tpl-loading">No templates found</div>'; return; }
+      templates.forEach(tpl => {
+        const body = tpl.components?.find(c => c.type === 'BODY')?.text || '';
+        const statusColor = tpl.status === 'APPROVED' ? 'var(--success)' : 'var(--warning)';
+        const card = document.createElement('div');
+        card.className = 'tpl-card' + (selectedTemplate?.name === tpl.name ? ' selected' : '');
+        card.onclick = () => selectTemplate(tpl);
+        card.innerHTML = `
+          <div class="tpl-name">${tpl.name}</div>
+          <div class="tpl-meta">
+            <span style="color:${statusColor}; font-weight:700;">${tpl.status}</span>
+            &nbsp;•&nbsp;${tpl.category || '—'}
+            &nbsp;•&nbsp;${tpl.language || '—'}
+          </div>
+          <div class="tpl-body">${body || '<em style="color:var(--muted)">No body text</em>'}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function selectTemplate(tpl) {
+      selectedTemplate = tpl;
+      // Highlight selected
+      document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+      // Fill Step 2
+      document.getElementById('camp-tpl-display').value = tpl.name;
+      document.getElementById('sel-tpl-name').value = tpl.name;
+      document.getElementById('sel-tpl-lang').value = tpl.language || 'en_US';
+      document.getElementById('camp-lang').value = tpl.language || 'en_US';
+      // Update preview
+      updatePreview();
+      // Build variable fields
+      buildVarFields(tpl);
+      updateLaunchSummary();
+    }
+
+    function updatePreview() {
+      if (!selectedTemplate) return;
+      const header = selectedTemplate.components?.find(c => c.type === 'HEADER')?.text || '';
+      const body = selectedTemplate.components?.find(c => c.type === 'BODY')?.text || '';
+      const footer = selectedTemplate.components?.find(c => c.type === 'FOOTER')?.text || '';
+      // Substitute variable placeholders with sample values from inputs
+      const varInputs = document.querySelectorAll('.var-input');
+      let previewBody = body;
+      varInputs.forEach((inp, i) => {
+        previewBody = previewBody.replace(`{{${i+1}}}`, `<strong>${inp.value || `{{${i+1}}}`}</strong>`);
+      });
+      const el = document.getElementById('preview-body');
+      el.style.fontStyle = 'normal'; el.style.color = '#333';
+      el.innerHTML =
+        (header ? `<div style="font-weight:800; margin-bottom:6px;">${header}</div>` : '') +
+        `<div>${previewBody}</div>` +
+        (footer ? `<div style="font-size:11px; color:#777; margin-top:8px;">${footer}</div>` : '');
+    }
+
+    function buildVarFields(tpl) {
+      const body = tpl.components?.find(c => c.type === 'BODY')?.text || '';
+      const matches = [...body.matchAll(/\{\{(\d+)\}\}/g)];
+      const vb = document.getElementById('var-builder');
+      const vr = document.getElementById('var-rows');
+      vr.innerHTML = '';
+      if (!matches.length) { vb.style.display = 'none'; return; }
+      vb.style.display = 'block';
+      // Deduplicate variable numbers
+      const seen = new Set();
+      matches.forEach(m => {
+        const num = m[1];
+        if (seen.has(num)) return; seen.add(num);
+        const row = document.createElement('div');
+        row.className = 'var-row';
+        row.innerHTML = `
+          <label>Variable {{${num}}}</label>
+          <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
+            class="var-input" data-var="${num}" placeholder="Value for {{${num}}}" oninput="updatePreview()">
+        `;
+        row.querySelector('input').classList.add('var-input');
+        vr.appendChild(row);
+      });
+    }
+
+    // ─── Leads Management ───
+    function renderLeads() {
+      const tbody = document.getElementById('leads-tbody');
+      const count = document.getElementById('leads-count');
+      count.textContent = leads.length;
+      if (!leads.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--muted);">No recipients added yet</td></tr>';
+        updateLaunchSummary(); return;
+      }
+      tbody.innerHTML = '';
+      leads.forEach((l, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td style="color:var(--muted); width:36px;">${i+1}</td>
+          <td style="font-weight:600;">${l.name || '—'}</td>
+          <td><code style="font-size:12px;">${l.phone}</code></td>
+          <td style="width:40px;"><button onclick="removeLead(${i})" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;" title="Remove">×</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+      updateLaunchSummary();
+    }
+
+    function removeLead(i) { leads.splice(i, 1); renderLeads(); }
+    function clearLeads() { leads = []; renderLeads(); }
+
+    function addManualLead() {
+      const name = document.getElementById('lead-name').value.trim();
+      const phone = document.getElementById('lead-phone').value.trim();
+      if (!phone) return alert('Phone number is required.');
+      const clean = phone.startsWith('+') ? phone.replace(/\s/g,'') : '+' + phone.replace(/\s/g,'');
+      if (leads.some(l => l.phone === clean)) return alert('This number is already in the list.');
+      leads.push({ name: name || '', phone: clean });
+      document.getElementById('lead-name').value = '';
+      document.getElementById('lead-phone').value = '';
+      renderLeads();
+    }
+
+    function importPastedNumbers() {
+      const raw = document.getElementById('paste-phones').value;
+      const nums = raw.split(/[,\n]+/).map(s => s.trim()).filter(Boolean);
+      let added = 0;
+      nums.forEach(n => {
+        const clean = n.startsWith('+') ? n.replace(/\s/g,'') : '+' + n.replace(/\s/g,'');
+        if (!leads.some(l => l.phone === clean)) { leads.push({ name: '', phone: clean }); added++; }
+      });
+      document.getElementById('paste-phones').value = '';
+      renderLeads();
+      if (added) alert(`✅ Added ${added} recipient${added!==1?'s':''}!`);
+    }
+
+    function parseCsvExcel(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const msg = document.getElementById('csv-parse-msg');
+      msg.textContent = 'Parsing…';
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          let rows = [];
+          if (file.name.endsWith('.csv')) {
+            // Parse CSV manually
+            const text = evt.target.result;
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"|'/g,''));
+            for (let i = 1; i < lines.length; i++) {
+              const cols = lines[i].split(',').map(c => c.trim().replace(/"|'/g,''));
+              const obj = {};
+              headers.forEach((h, idx) => obj[h] = cols[idx] || '');
+              rows.push(obj);
+            }
+          } else {
+            // Parse Excel with SheetJS
+            const wb = XLSX.read(evt.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+            // Normalise column names
+            rows = rows.map(r => {
+              const norm = {};
+              Object.keys(r).forEach(k => norm[k.toLowerCase().trim()] = String(r[k]).trim());
+              return norm;
+            });
+          }
+          // Find phone/name columns (flexible matching)
+          let added = 0, skipped = 0;
+          rows.forEach(row => {
+            const phoneKey = Object.keys(row).find(k => /phone|mobile|number|ph|tel|wa|whatsapp/.test(k));
+            const nameKey = Object.keys(row).find(k => /name|lead|contact|customer/.test(k));
+            if (!phoneKey) return;
+            let phone = String(row[phoneKey]).replace(/\s/g, '').replace(/[^+\d]/g,'');
+            if (!phone) return;
+            if (!phone.startsWith('+')) phone = '+' + phone;
+            if (leads.some(l => l.phone === phone)) { skipped++; return; }
+            leads.push({ name: nameKey ? row[nameKey] : '', phone });
+            added++;
+          });
+          renderLeads();
+          msg.innerHTML = `<span style="color:var(--success);">✅ Imported ${added} contacts${skipped ? ` (${skipped} duplicates skipped)` : ''}.</span>`;
+        } catch (err) {
+          msg.innerHTML = '<span style="color:var(--danger);">❌ Failed to parse: ' + err.message + '</span>';
+        }
+        e.target.value = '';
+      };
+      file.name.endsWith('.csv') ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
+    }
+
+    function switchLeadTab(id, btn) {
+      document.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.sub-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-' + id).classList.add('active');
+    }
+
+    function updateLaunchSummary() {
+      const el = document.getElementById('launch-summary');
+      if (!el) return;
+      const tplOk = !!selectedTemplate;
+      const leadsOk = leads.length > 0;
+      const nameOk = !!(document.getElementById('camp-name')?.value?.trim());
+      if (tplOk && leadsOk) {
+        el.innerHTML = `Ready to send <strong>${selectedTemplate.name}</strong> to <strong>${leads.length}</strong> recipients`;
+      } else {
+        const missing = [];
+        if (!tplOk) missing.push('select a template');
+        if (!leadsOk) missing.push('add recipients');
+        el.textContent = 'Still needed: ' + missing.join(', ');
+      }
+    }
+
+    async function launchCampaign() {
+      if (!clientId) return alert('Select a client first.');
+      if (!selectedTemplate) return alert('Please select a template in Step 1.');
+      if (!leads.length) return alert('Please add at least one recipient in Step 3.');
+      const name = document.getElementById('camp-name').value.trim();
+      if (!name) return alert('Please enter a campaign title.');
+
       const btn = document.getElementById('campaign-btn');
       const msg = document.getElementById('camp-msg');
-      btn.disabled = true; btn.textContent = 'Enqueuing…';
+      btn.disabled = true; btn.textContent = '⏳ Sending…';
 
-      const recip = document.getElementById('camp-recip').value.split(',').map(s => s.trim()).filter(Boolean);
+      // Build components from variable inputs
       let comp = null;
-      const cv = document.getElementById('camp-vars').value.trim();
-      if (cv) { try { comp = JSON.parse(cv); } catch { return alert('Invalid JSON in template variables.'); } }
+      const varInputs = document.querySelectorAll('.var-input');
+      if (varInputs.length > 0) {
+        const params = Array.from(varInputs).map(inp => ({ type: 'text', text: inp.value || '' }));
+        comp = [{ type: 'body', parameters: params }];
+      }
+
+      const recipients = leads.map(l => l.phone);
 
       try {
         const r = await fetch('/api/campaigns', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             client_id: clientId,
-            name: document.getElementById('camp-name').value.trim(),
-            template_name: document.getElementById('camp-template').value.trim(),
-            language_code: document.getElementById('camp-lang').value.trim(),
-            recipients: recip, components: comp
+            name,
+            template_name: selectedTemplate.name,
+            language_code: document.getElementById('camp-lang').value || selectedTemplate.language || 'en',
+            recipients,
+            components: comp
           })
         });
         const d = await r.json();
         if (r.ok) {
-          msg.innerHTML = '<span style="color:var(--success);">✅ Campaign launched! Messages enqueued via BullMQ.</span>';
-          document.getElementById('campaign-form').reset();
-          document.getElementById('camp-lang').value = 'en';
+          msg.innerHTML = `<span style="color:var(--success);">✅ Campaign launched! ${recipients.length} messages enqueued. Campaign ID: <code>${d.campaign_id}</code></span>`;
+          leads = []; selectedTemplate = null;
+          renderLeads();
+          document.getElementById('camp-name').value = '';
+          document.getElementById('camp-tpl-display').value = '';
+          document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('selected'));
+          document.getElementById('preview-body').innerHTML = '<span style="color:#aaa; font-style:italic;">Select a template to preview</span>';
+          updateLaunchSummary();
         } else {
           msg.innerHTML = '<span style="color:var(--danger);">❌ ' + d.error + '</span>';
         }

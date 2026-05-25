@@ -258,6 +258,43 @@ app.get('/api/clients', async (req, res) => {
   }
 });
 
+// GET Approved Meta WhatsApp Templates for a client
+app.get('/api/templates', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query(
+      'SELECT whatsapp_business_id, system_access_token FROM public.clients WHERE id = $1',
+      [client_id]
+    );
+    centralClient.release();
+
+    if (!clientRes.rows.length) return res.status(404).json({ error: 'Client not found' });
+
+    const { whatsapp_business_id, system_access_token } = clientRes.rows[0];
+
+    const metaUrl = `https://graph.facebook.com/v18.0/${whatsapp_business_id}/message_templates` +
+      `?fields=name,status,language,category,components&limit=100&access_token=${system_access_token}`;
+
+    const metaRes = await fetch(metaUrl);
+    const metaData = await metaRes.json();
+
+    if (!metaRes.ok) {
+      console.error('Meta templates API error:', metaData);
+      return res.status(metaRes.status).json({ error: metaData.error?.message || 'Meta API error' });
+    }
+
+    // Return all templates (including APPROVED ones); client can filter
+    const templates = (metaData.data || []);
+    res.json(templates);
+  } catch (err) {
+    console.error('Error fetching templates:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET Client Stats
 app.get('/api/stats', async (req, res) => {
   const { client_id } = req.query;
