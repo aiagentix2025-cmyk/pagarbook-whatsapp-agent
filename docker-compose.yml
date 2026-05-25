@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
   pagarbook-bot:
+    build: .
     image: pagarbook-bot
     container_name: pagarbook-bot-container
     restart: unless-stopped
