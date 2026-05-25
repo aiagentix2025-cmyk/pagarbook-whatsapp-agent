@@ -291,6 +291,12 @@
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
         Vector Sandbox
       </div>
+
+      <div class="nav-section">Audit</div>
+      <div class="nav-item" id="nav-audit" onclick="go('audit')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        Developer Audit
+      </div>
     </div>
 
     <div class="sidebar-footer">
@@ -624,6 +630,38 @@
           </div>
           <div id="camp-msg" style="margin-top:12px; font-size:13px;"></div>
         </div>
+
+        <!-- Campaign Analytics / History -->
+        <div class="card fade-in" style="margin-top: 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+              Campaign History & Analytics
+            </h2>
+            <button class="btn sec" onclick="loadCampaigns()" style="padding:8px 16px; font-size:12px;">🔄 Refresh Analytics</button>
+          </div>
+          
+          <div class="tbl-wrap">
+            <table class="leads-table">
+              <thead>
+                <tr>
+                  <th>Campaign Name</th>
+                  <th>Template</th>
+                  <th>Total</th>
+                  <th style="color:var(--muted)">Queued</th>
+                  <th style="color:#3b82f6">Sent</th>
+                  <th style="color:#8b5cf6">Delivered</th>
+                  <th style="color:var(--success)">Read</th>
+                  <th style="color:var(--danger)">Failed</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="campaigns-tbody">
+                <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--muted);">No campaigns dispatched yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <!-- ─── TAB: CHATS ─────────────────────────────────────────── -->
@@ -658,6 +696,53 @@
         </div>
       </div>
 
+      <!-- ─── TAB: DEVELOPER AUDIT ────────────────────────────────── -->
+      <div class="tab" id="tab-audit">
+        <div class="card fade-in">
+          <h2>
+            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+            Developer Audit & Missing Features
+          </h2>
+          <div style="font-size:14px; line-height:1.7; color:var(--text);">
+            <p style="margin-bottom:16px;">This page tracks missing features and architecture alignments needed for a complete production-grade platform.</p>
+            
+            <h3 style="margin-top:24px; margin-bottom:8px; font-size:15px;">1. Inbox & Agent Takeover (Partial)</h3>
+            <ul style="padding-left:20px; margin-bottom:16px; color:var(--muted);">
+              <li><strong>Current:</strong> Chat History shows messages. Status updates to 'paused' on manual reply to pause the bot for 24h.</li>
+              <li><strong>Missing:</strong> Ability to actually send a message from the UI to the user (Manual Reply UI).</li>
+              <li><strong>Missing:</strong> Button to manually "Resume Bot" or "Mark as Read".</li>
+              <li><strong>Missing:</strong> Support for sending/receiving images, documents, and interactive buttons in the UI.</li>
+            </ul>
+
+            <h3 style="margin-top:24px; margin-bottom:8px; font-size:15px;">2. Template Management (Missing)</h3>
+            <ul style="padding-left:20px; margin-bottom:16px; color:var(--muted);">
+              <li><strong>Current:</strong> We fetch templates from Meta in the Campaigns tab.</li>
+              <li><strong>Missing:</strong> A dedicated Template Builder UI to create, edit, and submit new templates directly to Meta API without logging into Facebook Business Manager.</li>
+            </ul>
+
+            <h3 style="margin-top:24px; margin-bottom:8px; font-size:15px;">3. Contact Management (Missing)</h3>
+            <ul style="padding-left:20px; margin-bottom:16px; color:var(--muted);">
+              <li><strong>Current:</strong> Contacts are imported per campaign (CSV/Excel) but not saved to a global address book.</li>
+              <li><strong>Missing:</strong> A CRM-like Address Book to save contacts, add tags/segments, and select segments during a campaign instead of re-uploading CSVs.</li>
+              <li><strong>Missing:</strong> Opt-out (unsubscribe) management UI (the backend handles it, but UI doesn't show unsubscribed users).</li>
+            </ul>
+
+            <h3 style="margin-top:24px; margin-bottom:8px; font-size:15px;">4. Analytics Dashboard (Partial)</h3>
+            <ul style="padding-left:20px; margin-bottom:16px; color:var(--muted);">
+              <li><strong>Current:</strong> We now show basic sent/delivered/read/failed stats per campaign.</li>
+              <li><strong>Missing:</strong> Global platform analytics (e.g., Total messages sent this month, Bot deflection rate, Top FAQs asked by customers).</li>
+              <li><strong>Missing:</strong> Drill-down view of failed messages (clicking on the "Failed" number to see exactly <em>which</em> phones failed and <em>why</em>).</li>
+            </ul>
+
+            <h3 style="margin-top:24px; margin-bottom:8px; font-size:15px;">5. Agent Features (Missing)</h3>
+            <ul style="padding-left:20px; margin-bottom:16px; color:var(--muted);">
+              <li><strong>Missing:</strong> Human handover logic (e.g., bot automatically pauses if user types "talk to human").</li>
+              <li><strong>Missing:</strong> Web search or API action tools for the bot to fetch live customer data.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 
@@ -689,7 +774,8 @@
       documents: 'Knowledge Base',
       campaigns: 'Bulk Campaigns',
       chats:     'Chat History',
-      sandbox:   'Vector KB Sandbox'
+      sandbox:   'Vector KB Sandbox',
+      audit:     'Developer Audit'
     };
 
     function go(id) {
@@ -703,6 +789,7 @@
       if (id === 'chats') loadSessions();
       if (id === 'agents') loadAgentConfig();
       if (id === 'clients') loadClients();
+      if (id === 'campaigns') loadCampaigns();
     }
 
     // ═══════════ CLIENTS ════════
@@ -1282,6 +1369,7 @@
           document.querySelectorAll('.tpl-card').forEach(c => c.classList.remove('selected'));
           document.getElementById('preview-body').innerHTML = '<span style="color:#aaa; font-style:italic;">Select a template to preview</span>';
           updateLaunchSummary();
+          loadCampaigns(); // Refresh the analytics table
         } else {
           msg.innerHTML = '<span style="color:var(--danger);">❌ ' + d.error + '</span>';
         }
@@ -1289,6 +1377,42 @@
         msg.innerHTML = '<span style="color:var(--danger);">❌ ' + err.message + '</span>';
       }
       btn.disabled = false; btn.textContent = '🚀 Launch Campaign';
+    }
+
+    // Load Campaign Analytics
+    async function loadCampaigns() {
+      if (!clientId) return;
+      const tbody = document.getElementById('campaigns-tbody');
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--muted);">Loading campaigns…</td></tr>';
+      try {
+        const r = await fetch('/api/campaigns?client_id=' + clientId);
+        const data = await r.json();
+        
+        if (!data || data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--muted);">No campaigns dispatched yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(c => {
+          const date = new Date(c.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight:600;">${c.name}</td>
+            <td><code style="font-size:11px;">${c.template_name}</code></td>
+            <td style="font-weight:700;">${c.total_recipients}</td>
+            <td style="color:var(--muted)">${c.queued_count || 0}</td>
+            <td style="color:#3b82f6; font-weight:600;">${c.sent_count || 0}</td>
+            <td style="color:#8b5cf6; font-weight:600;">${c.delivered_count || 0}</td>
+            <td style="color:var(--success); font-weight:700;">${c.read_count || 0}</td>
+            <td style="color:var(--danger); font-weight:600;">${c.failed_count || 0}</td>
+            <td style="font-size:11px; color:var(--muted);">${date}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:20px; color:var(--danger);">Error loading campaigns: ${err.message}</td></tr>`;
+      }
     }
 
     // ═══════════ SESSIONS ═══════

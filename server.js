@@ -171,6 +171,38 @@ app.post('/api/campaigns', async (req, res) => {
   }
 });
 
+// GET Campaigns List with Stats
+app.get('/api/campaigns', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (!clientRes.rows.length) return res.status(404).json({ error: 'Client not found' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    const result = await tenantPool.query(`
+      SELECT c.*, 
+             COUNT(l.id) as total_logs,
+             SUM(CASE WHEN l.status = 'queued' THEN 1 ELSE 0 END) as queued_count,
+             SUM(CASE WHEN l.status = 'sent' THEN 1 ELSE 0 END) as sent_count,
+             SUM(CASE WHEN l.status = 'delivered' THEN 1 ELSE 0 END) as delivered_count,
+             SUM(CASE WHEN l.status = 'read' THEN 1 ELSE 0 END) as read_count,
+             SUM(CASE WHEN l.status = 'failed' THEN 1 ELSE 0 END) as failed_count
+      FROM public.campaigns c
+      LEFT JOIN public.campaign_logs l ON c.id = l.campaign_id
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Upload and Vectorize a Document
 app.post('/api/documents', async (req, res) => {
   const { client_id, file_name, file_url, local_file_path } = req.body;
