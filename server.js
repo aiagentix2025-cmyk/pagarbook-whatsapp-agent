@@ -49,32 +49,83 @@ function getGoogleAuthClient() {
 }
 
 // Helper: Send WhatsApp Message (Meta API)
-async function sendWhatsAppMessage(recipientPhone, textBody, accessToken, phoneNumberId) {
+async function sendWhatsAppMessage(recipientPhone, textBody, accessToken, phoneNumberId, type = 'text', mediaUrl = null, filename = null, buttons = null) {
   if (!accessToken || !phoneNumberId) {
     console.error('Meta credentials missing. Cannot send message.');
     return;
   }
 
-  console.log(`Sending WhatsApp message via Meta to ${recipientPhone}: ${textBody}`);
+  console.log(`Sending WhatsApp message of type ${type} via Meta to ${recipientPhone}`);
   const url = `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`;
   
+  let bodyPayload = {
+    messaging_product: 'whatsapp',
+    to: recipientPhone
+  };
+
+  if (type === 'image') {
+    bodyPayload.type = 'image';
+    bodyPayload.image = { link: mediaUrl || textBody };
+  } else if (type === 'document') {
+    bodyPayload.type = 'document';
+    bodyPayload.document = { link: mediaUrl || textBody, filename: filename || 'document.pdf' };
+  } else if (type === 'interactive' && buttons && buttons.length > 0) {
+    bodyPayload.type = 'interactive';
+    bodyPayload.interactive = {
+      type: 'button',
+      body: { text: textBody },
+      action: {
+        buttons: buttons.map((btn, idx) => ({
+          type: 'reply',
+          reply: { id: btn.id || `btn_${idx}`, title: btn.title }
+        }))
+      }
+    };
+  } else {
+    bodyPayload.type = 'text';
+    bodyPayload.text = { body: textBody };
+  }
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: recipientPhone,
-      type: 'text',
-      text: { body: textBody }
-    })
+    body: JSON.stringify(bodyPayload)
   });
 
   if (!response.ok) {
     const errText = await response.text();
     console.error(`WhatsApp send error: ${response.status} - ${errText}`);
+    throw new Error(errText);
+  }
+}
+
+// Helper: Free DuckDuckGo Web Search crawler
+async function searchWeb(query) {
+  try {
+    console.log(`Executing web search tool for query: "${query}"...`);
+    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+    if (!res.ok) return `Web search error: ${res.status} ${res.statusText}`;
+    const html = await res.text();
+    const snippets = [];
+    // Extract search snippets
+    const regex = /<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
+    let match;
+    while ((match = regex.exec(html)) !== null && snippets.length < 5) {
+      const cleanSnippet = match[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      snippets.push(cleanSnippet);
+    }
+    return snippets.join('\n\n') || "No web search results found.";
+  } catch (err) {
+    console.error('Web search failed:', err);
+    return `Search failed: ${err.message}`;
   }
 }
 
@@ -342,17 +393,35 @@ app.get('/api/stats', async (req, res) => {
     const tenantPool = db.getTenantPool(dbName);
 
     const docCount = await tenantPool.query('SELECT count(*) FROM public.kb_documents');
-    const conversationCount = await tenantPool.query('SELECT count(*) FROM public.chat_sessions');
-    
+    const totalConversations = await tenantPool.query('SELECT count(*) FROM public.chat_sessions');
+    const activeChats = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE session_status = 'active'");
+    const pausedChats = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE session_status = 'paused'");
+    const totalCampaigns = await tenantPool.query('SELECT count(*) FROM public.campaigns');
+
+    // Campaign Logs delivery stats
+    const logStats = await tenantPool.query(`
+      SELECT 
+        COALESCE(SUM(CASE WHEN status != 'failed' THEN 1 ELSE 0 END), 0) as success_count,
+        COALESCE(COUNT(*), 0) as total_count
+      FROM public.campaign_logs
+    `);
+
+    const totalLogs = parseInt(logStats.rows[0].total_count);
+    const successLogs = parseInt(logStats.rows[0].success_count);
+    const deliveryRate = totalLogs > 0 ? Math.round((successLogs / totalLogs) * 100) : 100;
+
     const uptimeSeconds = Math.floor(process.uptime());
     const hrs = Math.floor(uptimeSeconds / 3600);
     const mins = Math.floor((uptimeSeconds % 3600) / 60);
-    const secs = uptimeSeconds % 60;
-    const uptimeStr = `${hrs}h ${mins}m ${secs}s`;
+    const uptimeStr = `${hrs}h ${mins}m`;
 
     res.json({
       totalDocuments: parseInt(docCount.rows[0].count),
-      totalConversations: parseInt(conversationCount.rows[0].count),
+      totalConversations: parseInt(totalConversations.rows[0].count),
+      activeChats: parseInt(activeChats.rows[0].count),
+      pausedChats: parseInt(pausedChats.rows[0].count),
+      totalCampaigns: parseInt(totalCampaigns.rows[0].count),
+      deliveryRate: deliveryRate + '%',
       uptime: uptimeStr
     });
   } catch (err) {
@@ -507,6 +576,354 @@ app.post('/api/agents', async (req, res) => {
     
     centralClient.release();
     res.json({ message: 'AI Agent settings saved successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Send Manual operator Reply and Pause chatbot for 24h
+app.post('/api/sessions/:id/reply', async (req, res) => {
+  const { client_id, message, type, mediaUrl, filename, buttons } = req.body;
+  const sessionId = req.params.id;
+  if (!client_id || (!message && !mediaUrl)) {
+    return res.status(400).json({ error: 'client_id and message/mediaUrl are required.' });
+  }
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query(
+      'SELECT db_name, phone_number_id, system_access_token FROM public.clients WHERE id = $1',
+      [client_id]
+    );
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const { db_name, phone_number_id, system_access_token } = clientRes.rows[0];
+    const tenantPool = db.getTenantPool(db_name);
+
+    // Fetch session details (customer phone)
+    const sessRes = await tenantPool.query('SELECT customer_phone FROM public.chat_sessions WHERE id = $1', [sessionId]);
+    if (sessRes.rows.length === 0) return res.status(404).json({ error: 'Session not found.' });
+    const customerPhone = sessRes.rows[0].customer_phone;
+
+    // Send via Meta API
+    await sendWhatsAppMessage(customerPhone, message || '', system_access_token, phone_number_id, type || 'text', mediaUrl, filename, buttons);
+
+    // Save message to chat_messages
+    const contentToSave = (type === 'image' || type === 'document') ? (mediaUrl || message) : message;
+    await tenantPool.query(
+      `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content)
+       VALUES ($1, 'agent', $2, $3)`,
+      [sessionId, type || 'text', contentToSave]
+    );
+
+    // Update session status to paused (takeover) and update activity
+    await tenantPool.query(
+      "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+      [sessionId]
+    );
+
+    res.json({ success: true, message: 'Message sent and bot paused for takeover.' });
+  } catch (err) {
+    console.error('Error in operator reply:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Resume chatbot manually
+app.post('/api/sessions/:id/resume', async (req, res) => {
+  const { client_id } = req.body;
+  const sessionId = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    await tenantPool.query(
+      "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+      [sessionId]
+    );
+    res.json({ success: true, message: 'Chatbot agent resumed.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Pause chatbot manually
+app.post('/api/sessions/:id/pause', async (req, res) => {
+  const { client_id } = req.body;
+  const sessionId = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    await tenantPool.query(
+      "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+      [sessionId]
+    );
+    res.json({ success: true, message: 'Chatbot agent paused.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Direct Media Upload without RAG vectorization (specifically for live operators sending files)
+app.post('/api/media/upload', async (req, res) => {
+  const { client_id, file_name, file_data } = req.body;
+  if (!client_id || !file_name || !file_data) {
+    return res.status(400).json({ error: 'client_id, file_name, and file_data (base64) are required.' });
+  }
+  try {
+    const uploadDir = path.join(__dirname, 'public', 'media');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    const safeFilename = `${Date.now()}_${file_name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const localFilePath = path.join(uploadDir, safeFilename);
+    const buffer = Buffer.from(file_data, 'base64');
+    fs.writeFileSync(localFilePath, buffer);
+
+    let publicUrl = `/media/${safeFilename}`;
+    if (process.env.APP_URL) {
+      publicUrl = `${process.env.APP_URL}/media/${safeFilename}`;
+    } else {
+      const host = req.get('host');
+      const protocol = req.protocol;
+      publicUrl = `${protocol}://${host}/media/${safeFilename}`;
+    }
+
+    res.json({ success: true, file_url: publicUrl });
+  } catch (err) {
+    console.error('Operator media upload error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Submit a new template to Meta
+app.post('/api/templates', async (req, res) => {
+  const { client_id, name, category, language, components } = req.body;
+  if (!client_id || !name || !category || !language || !components) {
+    return res.status(400).json({ error: 'All fields (client_id, name, category, language, components) are required.' });
+  }
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query(
+      'SELECT whatsapp_business_id, system_access_token FROM public.clients WHERE id = $1',
+      [client_id]
+    );
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const { whatsapp_business_id, system_access_token } = clientRes.rows[0];
+
+    const url = `https://graph.facebook.com/v18.0/${whatsapp_business_id}/message_templates`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${system_access_token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ name, category, language, components })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || 'Meta API error' });
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE: Delete a template from Meta
+app.delete('/api/templates/:name', async (req, res) => {
+  const { client_id } = req.query;
+  const name = req.params.name;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query(
+      'SELECT whatsapp_business_id, system_access_token FROM public.clients WHERE id = $1',
+      [client_id]
+    );
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const { whatsapp_business_id, system_access_token } = clientRes.rows[0];
+
+    const url = `https://graph.facebook.com/v18.0/${whatsapp_business_id}/message_templates?name=${name}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${system_access_token}`
+      }
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error?.message || 'Meta API error' });
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: Fetch CRM contacts with unsubscribed status
+app.get('/api/contacts', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id parameter is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    const result = await tenantPool.query(`
+      SELECT c.*, (u.customer_phone IS NOT NULL) AS is_unsubscribed
+      FROM public.contacts c
+      LEFT JOIN public.unsubscribed_contacts u ON u.customer_phone = c.phone
+      ORDER BY c.created_at DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Add or Update single contact
+app.post('/api/contacts', async (req, res) => {
+  const { client_id, name, phone, tags, notes } = req.body;
+  if (!client_id || !phone) return res.status(400).json({ error: 'client_id and phone are required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    const formattedTags = Array.isArray(tags) ? tags : (tags ? tags.split(',').map(t => t.trim()) : []);
+
+    const result = await tenantPool.query(`
+      INSERT INTO public.contacts (name, phone, tags, notes, updated_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (phone) DO UPDATE SET
+        name = EXCLUDED.name,
+        tags = EXCLUDED.tags,
+        notes = EXCLUDED.notes,
+        updated_at = CURRENT_TIMESTAMP
+      RETURNING *
+    `, [name || '', phone, formattedTags, notes || '']);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Add contacts in bulk (for CSV/Excel imports)
+app.post('/api/contacts/bulk', async (req, res) => {
+  const { client_id, contacts } = req.body;
+  if (!client_id || !Array.isArray(contacts)) {
+    return res.status(400).json({ error: 'client_id and an array of contacts are required.' });
+  }
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    let inserted = 0;
+    for (const c of contacts) {
+      if (!c.phone) continue;
+      const formattedTags = Array.isArray(c.tags) ? c.tags : (c.tags ? c.tags.split(',').map(t => t.trim()) : []);
+      await tenantPool.query(`
+        INSERT INTO public.contacts (name, phone, tags, notes, updated_at)
+        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+        ON CONFLICT (phone) DO UPDATE SET
+          name = EXCLUDED.name,
+          tags = EXCLUDED.tags,
+          notes = EXCLUDED.notes,
+          updated_at = CURRENT_TIMESTAMP
+      `, [c.name || '', c.phone, formattedTags, c.notes || '']);
+      inserted++;
+    }
+
+    res.json({ success: true, count: inserted });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE: Delete a CRM contact
+app.delete('/api/contacts/:id', async (req, res) => {
+  const { client_id } = req.query;
+  const id = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id parameter is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    await tenantPool.query('DELETE FROM public.contacts WHERE id = $1', [id]);
+    res.json({ success: true, message: 'Contact deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET: Fetch campaign logs (failures breakdown or complete log)
+app.get('/api/campaigns/:id/logs', async (req, res) => {
+  const { client_id, status } = req.query;
+  const campaignId = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    let query = 'SELECT recipient_phone, status, error_message, updated_at FROM public.campaign_logs WHERE campaign_id = $1';
+    let params = [campaignId];
+
+    if (status) {
+      query += ' AND status = $2';
+      params.push(status);
+    }
+    
+    query += ' ORDER BY updated_at DESC';
+
+    const result = await tenantPool.query(query, params);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -742,6 +1159,41 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
+      // E2. Human Handover Detection
+      const handoverRegex = /\b(human|agent|support|speak to someone|real person)\b/i;
+      if (handoverRegex.test(userTextContent)) {
+        console.log(`Human handover request detected from ${recipientPhone}: "${userTextContent}"`);
+        
+        // Pause the session
+        await tenantPool.query(
+          "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+          [session.id]
+        );
+
+        // Save customer query
+        await tenantPool.query(
+          `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) 
+           VALUES ($1, 'human', 'text', $2)`,
+          [session.id, userTextContent]
+        );
+
+        // Save and send handover announcement
+        const handoverReply = "Connecting you to a human agent, please wait... 🤝 Our team has been notified and will reply shortly. (Bot paused)";
+        await tenantPool.query(
+          `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) 
+           VALUES ($1, 'ai', 'text', $2)`,
+          [session.id, handoverReply]
+        );
+
+        await sendWhatsAppMessage(
+          recipientPhone,
+          handoverReply,
+          client.system_access_token,
+          client.phone_number_id
+        );
+        return;
+      }
+
       // F. Handle Bot Trigger Action
       // Auto-activate session on ANY incoming text message so the bot always replies.
       if (session.session_status !== 'active') {
@@ -784,6 +1236,7 @@ app.post('/webhook', async (req, res) => {
       const finalSystemPrompt = 
         `Today's date in IST is ${todayDateIST}, and today's weekday is ${todayWeekdayIST}.\n\n` +
         `Official Knowledge Base Context:\n${kbContext}\n\n` +
+        `Web Search Tool: If you need real-time facts or current information that is not available in the Knowledge Base context, respond ONLY with "[SEARCH: query]". Replace "query" with a concise search query. The system will automatically execute this search, retrieve the results, and present them to you, after which you will provide your final answer to the user.\n\n` +
         agent.system_prompt;
 
       // Construct LLM Message Array
@@ -840,7 +1293,7 @@ app.post('/webhook', async (req, res) => {
 
       // I. Trigger Chat Completion Call (Groq or OpenAI)
       console.log('Invoking LLM for response...');
-      const botResponse = await llm.getChatCompletion({
+      let botResponse = await llm.getChatCompletion({
         messages: openAiMessages,
         model: agent.model_name,
         temperature: parseFloat(agent.temperature),
@@ -850,6 +1303,37 @@ app.post('/webhook', async (req, res) => {
       });
 
       console.log(`LLM Response: "${botResponse}"`);
+
+      // Web Search Interception
+      if (botResponse.includes('[SEARCH:')) {
+        const searchMatch = botResponse.match(/\[SEARCH:\s*([^\]]+)\]/i);
+        if (searchMatch) {
+          const searchQuery = searchMatch[1].trim();
+          console.log(`AI Agent requested web search for: "${searchQuery}"`);
+          
+          // Perform web search
+          const searchResults = await searchWeb(searchQuery);
+          console.log(`Web search results retrieved, length: ${searchResults.length}`);
+          
+          // Append search results system prompt
+          openAiMessages.push({
+            role: 'system',
+            content: `Web Search Results for "${searchQuery}":\n\n${searchResults}\n\nPlease analyze the search results above and provide your final response to the user.`
+          });
+          
+          // Re-invoke LLM
+          console.log('Re-invoking LLM with web search results...');
+          botResponse = await llm.getChatCompletion({
+            messages: openAiMessages,
+            model: agent.model_name,
+            temperature: parseFloat(agent.temperature),
+            openAiApiKey: process.env.OPENAI_API_KEY,
+            groqApiKey: process.env.GROQ_API_KEY,
+            hasImage: hasImage
+          });
+          console.log(`Final LLM Response (post-search): "${botResponse}"`);
+        }
+      }
 
       // J. Save AI response in chat log history
       await tenantPool.query(
@@ -949,6 +1433,24 @@ async function bootstrap() {
   try {
     // 1. Initialize Central Database Tables
     await db.initCentralDb();
+
+    // Run tenant migrations for all existing client databases on startup
+    console.log('Running automatic database migrations for all onboarded clients...');
+    const centralClient = await db.getCentralClient();
+    try {
+      const clientsRes = await centralClient.query('SELECT db_name FROM public.clients');
+      for (const row of clientsRes.rows) {
+        try {
+          await db.runTenantMigrations(row.db_name);
+        } catch (migErr) {
+          console.error(`Migration failed for client database: ${row.db_name}`, migErr);
+        }
+      }
+    } catch (migLookupErr) {
+      console.error('Failed to lookup clients for database migrations:', migLookupErr);
+    } finally {
+      centralClient.release();
+    }
 
     // 2. Initialize Redis Connection
     console.log('Connecting to Redis for Webhook deduplication...');

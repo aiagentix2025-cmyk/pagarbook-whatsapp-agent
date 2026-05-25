@@ -167,6 +167,21 @@ async function runTenantMigrations(dbName) {
       );
     `);
 
+    // 8. Create Contacts (CRM Address Book) table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.contacts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(255),
+        phone VARCHAR(50) UNIQUE NOT NULL,
+        tags TEXT[] DEFAULT '{}',
+        notes TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_phone ON public.contacts(phone);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_contacts_tags ON public.contacts USING GIN(tags);`);
+
     console.log(`Tenant migrations for ${dbName} completed successfully.`);
   } catch (err) {
     console.error(`Error running migrations on ${dbName}:`, err);
