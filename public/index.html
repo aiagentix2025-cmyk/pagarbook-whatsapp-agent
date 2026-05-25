@@ -3,23 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PagarBook WhatsApp AI Agent - Admin Dashboard</title>
+  <title>WhatsApp Multi-Tenant AI Platform - Control Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-color: #080c14;
-      --panel-bg: rgba(17, 24, 39, 0.7);
-      --border-color: rgba(255, 255, 255, 0.08);
-      --text-main: #f3f4f6;
-      --text-muted: #9ca3af;
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --primary-glow: rgba(99, 102, 241, 0.15);
-      --accent: #06b6d4;
-      --accent-glow: rgba(6, 182, 212, 0.15);
+      --bg-color: #f1f5f9;
+      --panel-bg: rgba(255, 255, 255, 0.75);
+      --border-color: rgba(15, 23, 42, 0.08);
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-glow: rgba(79, 70, 229, 0.08);
+      --accent: #0891b2;
+      --accent-glow: rgba(8, 145, 178, 0.08);
       --success: #10b981;
-      --chat-human: #374151;
-      --chat-ai: rgba(99, 102, 241, 0.2);
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --chat-human: #e2e8f0;
+      --chat-ai: rgba(79, 70, 229, 0.08);
     }
 
     * {
@@ -32,12 +34,12 @@
     body {
       background-color: var(--bg-color);
       color: var(--text-main);
-      overflow-hidden;
+      overflow: hidden;
       height: 100vh;
       display: flex;
     }
 
-    /* Glassmorphism Background Gradients */
+    /* Ambient Glow Backgrounds */
     body::before {
       content: "";
       position: absolute;
@@ -78,7 +80,7 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 40px;
+      margin-bottom: 32px;
     }
 
     .logo-icon {
@@ -92,14 +94,14 @@
       font-weight: 700;
       font-size: 18px;
       color: #fff;
-      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
     }
 
     .logo-text {
       font-weight: 700;
       font-size: 18px;
       letter-spacing: -0.5px;
-      background: linear-gradient(135deg, #fff, #9ca3af);
+      background: linear-gradient(135deg, var(--text-main), var(--text-muted));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -127,21 +129,53 @@
     }
 
     .nav-item:hover, .nav-item.active {
-      color: #fff;
-      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-main);
+      background: rgba(0, 0, 0, 0.03);
       border-color: var(--border-color);
     }
 
     .nav-item.active {
       background: var(--primary-glow);
-      border-color: rgba(99, 102, 241, 0.3);
-      color: #fff;
+      border-color: rgba(79, 70, 229, 0.2);
+      color: var(--primary);
+    }
+
+    .client-select-container {
+      margin-bottom: 24px;
+    }
+
+    .client-select-container label {
+      display: block;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .client-dropdown {
+      width: 100%;
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .client-dropdown:focus {
+      border-color: var(--primary);
     }
 
     .system-status {
       margin-top: auto;
       padding: 16px;
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(255, 255, 255, 0.4);
       border: 1px solid var(--border-color);
       border-radius: 12px;
       font-size: 12px;
@@ -173,13 +207,14 @@
       align-items: center;
       justify-content: space-between;
       padding: 0 40px;
-      background: rgba(8, 12, 20, 0.5);
+      background: rgba(255, 255, 255, 0.4);
       backdrop-filter: blur(8px);
     }
 
     header h1 {
       font-size: 20px;
       font-weight: 600;
+      color: var(--text-main);
     }
 
     /* Tabs Content Container */
@@ -194,10 +229,10 @@
       display: block;
     }
 
-    /* Dashboard Tab Grid */
+    /* Grids & Cards */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
       gap: 24px;
       margin-bottom: 40px;
     }
@@ -208,12 +243,13 @@
       border-radius: 16px;
       padding: 24px;
       backdrop-filter: blur(16px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
       transition: transform 0.2s ease, border-color 0.2s ease;
     }
 
     .stat-card:hover {
       transform: translateY(-2px);
-      border-color: rgba(255, 255, 255, 0.15);
+      border-color: rgba(0, 0, 0, 0.1);
     }
 
     .stat-card .label {
@@ -227,27 +263,210 @@
     .stat-card .value {
       font-size: 32px;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-main);
       margin-bottom: 4px;
     }
 
-    .stat-card .trend {
+    .stat-card .desc {
       font-size: 12px;
       color: var(--accent);
-      display: flex;
-      align-items: center;
-      gap: 4px;
     }
 
-    /* Dual Pane Layout (Chat Console) */
+    .card {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-main);
+    }
+
+    /* Form Fields */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .form-group.full-width {
+      grid-column: span 2;
+    }
+
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .form-group input, .form-group textarea, .form-group select {
+      background: #fff;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-main);
+      padding: 12px 16px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      border-color: var(--primary);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--primary);
+      border: none;
+      color: #fff;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+    }
+
+    .btn.secondary {
+      background: #fff;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn.secondary:hover {
+      background: #f8fafc;
+    }
+
+    /* Table / Lists */
+    .data-table-container {
+      overflow-x: auto;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .data-table th, .data-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table th {
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge.success { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+    .badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+    .badge.danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+    .badge.info { background: rgba(6, 182, 212, 0.1); color: var(--accent); }
+
+    /* Switch Toggles */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+      border-radius: 34px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--success);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Dual Pane layout (chats) */
     .console-pane {
       display: flex;
-      height: calc(100vh - 150px);
+      height: calc(100vh - 160px);
       background: var(--panel-bg);
       border: 1px solid var(--border-color);
       border-radius: 18px;
       overflow: hidden;
-      backdrop-filter: blur(16px);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
     }
 
     .session-list {
@@ -255,7 +474,7 @@
       border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      background: rgba(8, 12, 20, 0.2);
+      background: rgba(255, 255, 255, 0.3);
     }
 
     .session-list-header {
@@ -263,7 +482,7 @@
       border-bottom: 1px solid var(--border-color);
       font-weight: 600;
       font-size: 15px;
-      color: #fff;
+      color: var(--text-main);
     }
 
     .session-items {
@@ -275,7 +494,7 @@
 
     .session-item {
       padding: 16px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border-color);
       cursor: pointer;
       transition: all 0.2s ease;
       display: flex;
@@ -284,31 +503,33 @@
     }
 
     .session-item:hover {
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(0, 0, 0, 0.02);
     }
 
     .session-item.active {
-      background: rgba(99, 102, 241, 0.08);
+      background: rgba(79, 70, 229, 0.05);
       border-left: 3px solid var(--primary);
     }
 
     .session-item .phone {
       font-weight: 600;
       font-size: 14px;
-      color: #fff;
+      color: var(--text-main);
     }
 
-    .session-item .date {
+    .session-item .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 11px;
       color: var(--text-muted);
     }
 
-    /* Chat Area */
     .chat-area {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
-      background: rgba(8, 12, 20, 0.1);
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .chat-header {
@@ -317,6 +538,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      color: var(--text-main);
     }
 
     .chat-header .title {
@@ -343,25 +565,17 @@
 
     .chat-bubble.human {
       align-self: flex-end;
-      background: var(--chat-human);
+      background: var(--primary);
       color: #fff;
       border-bottom-right-radius: 2px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
     }
 
     .chat-bubble.ai {
       align-self: flex-start;
-      background: var(--chat-ai);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      color: #fff;
+      background: var(--chat-human);
+      color: var(--text-main);
       border-bottom-left-radius: 2px;
-    }
-
-    .chat-bubble .time {
-      display: block;
-      font-size: 10px;
-      color: var(--text-muted);
-      margin-top: 6px;
-      text-align: right;
     }
 
     .empty-state {
@@ -374,7 +588,7 @@
       gap: 12px;
     }
 
-    /* Knowledge Base Sandbox */
+    /* KB Search sandbox */
     .sandbox-container {
       display: flex;
       flex-direction: column;
@@ -384,10 +598,11 @@
     .search-box {
       display: flex;
       gap: 12px;
-      background: var(--panel-bg);
+      background: #fff;
       border: 1px solid var(--border-color);
       border-radius: 14px;
       padding: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
     }
 
     .search-box input {
@@ -395,7 +610,7 @@
       background: transparent;
       border: none;
       outline: none;
-      color: #fff;
+      color: var(--text-main);
       font-size: 14px;
       padding: 8px 16px;
     }
@@ -404,12 +619,12 @@
       background: var(--primary);
       border: none;
       color: #fff;
-      padding: 8px 24px;
+      padding: 10px 24px;
       border-radius: 10px;
       font-weight: 600;
       font-size: 14px;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: background 0.2s;
     }
 
     .search-box button:hover {
@@ -427,17 +642,17 @@
       border: 1px solid var(--border-color);
       border-radius: 14px;
       padding: 20px;
-      backdrop-filter: blur(16px);
       display: flex;
       flex-direction: column;
       gap: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
     }
 
     .result-card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid var(--border-color);
       padding-bottom: 10px;
     }
 
@@ -450,7 +665,7 @@
     .result-card .score {
       font-size: 12px;
       padding: 4px 8px;
-      background: rgba(6, 182, 212, 0.1);
+      background: rgba(8, 145, 178, 0.08);
       color: var(--accent);
       border-radius: 6px;
       font-weight: 600;
@@ -469,8 +684,16 @@
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo-container">
-      <div class="logo-icon">P</div>
-      <div class="logo-text">PagarBook WA</div>
+      <div class="logo-icon">C</div>
+      <div class="logo-text">WA Admin panel</div>
+    </div>
+
+    <!-- Client Dropdown Selector -->
+    <div class="client-select-container">
+      <label>Active Client Context</label>
+      <select class="client-dropdown" id="active-client-dropdown" onchange="changeActiveClient()">
+        <option value="">-- Select Client --</option>
+      </select>
     </div>
     
     <div class="nav-menu">
@@ -478,77 +701,236 @@
         <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z"/></svg>
         Dashboard
       </div>
+      <div class="nav-item" onclick="switchTab('clients')">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Manage Clients
+      </div>
+      <div class="nav-item" onclick="switchTab('agents')">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        AI Chatbot Agents
+      </div>
+      <div class="nav-item" onclick="switchTab('documents')">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        KB Documents
+      </div>
+      <div class="nav-item" onclick="switchTab('campaigns')">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
+        Bulk Campaigns
+      </div>
       <div class="nav-item" onclick="switchTab('chats')">
         <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-        Active Chats
+        Chat History logs
       </div>
       <div class="nav-item" onclick="switchTab('knowledge')">
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-        KB Search Sandbox
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        Vector KB Sandbox
       </div>
     </div>
     
     <div class="system-status">
       <div style="display: flex; align-items: center; margin-bottom: 6px;">
         <span class="status-dot"></span>
-        <span style="font-weight: 600; color: #fff;">Agent Online</span>
+        <span style="font-weight: 600; color: #fff;">Server Online</span>
       </div>
-      <span style="color: var(--text-muted);" id="uptime">Uptime: Loading...</span>
+      <span style="color: var(--text-muted);" id="system-uptime">Uptime: Loading...</span>
     </div>
   </div>
 
-  <!-- Main Container -->
+  <!-- Main Content -->
   <div class="main-content">
     <header>
       <h1 id="page-title">Dashboard Overview</h1>
       <div style="font-size: 14px; color: var(--text-muted);" id="current-time"></div>
     </header>
 
-    <!-- Tab 1: Dashboard -->
+    <!-- TAB: Dashboard -->
     <div id="tab-dashboard" class="tab-content active">
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="label">Total Conversations</div>
-          <div class="value" id="stat-conversations">...</div>
-          <div class="trend">Logged in database</div>
+          <div class="label">Knowledge Base Vectors</div>
+          <div class="value" id="stat-kb-chunks">0</div>
+          <div class="desc">Chunck embeddings</div>
         </div>
         <div class="stat-card">
-          <div class="label">KB Document Chunks</div>
-          <div class="value" id="stat-kb-chunks">...</div>
-          <div class="trend">1536-dim vectors</div>
+          <div class="label">Chat Sessions</div>
+          <div class="value" id="stat-chat-sessions">0</div>
+          <div class="desc">Active database sessions</div>
         </div>
         <div class="stat-card">
-          <div class="label">Average Latency</div>
-          <div class="value">0.8s</div>
-          <div class="trend">OpenAI Response</div>
+          <div class="label">Webhook Mode</div>
+          <div class="value">Secure</div>
+          <div class="desc">Verified Meta callback</div>
         </div>
       </div>
-      
-      <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; backdrop-filter: blur(16px);">
-        <h2 style="font-size: 16px; margin-bottom: 16px; font-weight: 600;">Welcome to PagarBook WhatsApp Admin Console</h2>
+
+      <div class="card">
+        <h2>About Your Platform</h2>
         <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted); margin-bottom: 12px;">
-          This custom dashboard is linked directly to your PostgreSQL database hosted on the VPS. Use the menu items on the left to:
+          This platform enables multi-tenant database isolated WhatsApp automation. From the panel on the left, you can manage client configurations. 
         </p>
-        <ul style="font-size: 14px; line-height: 1.8; color: var(--text-muted); padding-left: 20px;">
-          <li>Review real-time client chat histories under **Active Chats**.</li>
-          <li>Query your vector database chunks and inspect similarity scores under **KB Search Sandbox**.</li>
-        </ul>
+        <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted);">
+          Each client gets their own database dynamically provisioned inside your PostgreSQL instance, separating their knowledge base document vectors, chat logs, and campaigns.
+        </p>
       </div>
     </div>
 
-    <!-- Tab 2: Active Chats -->
+    <!-- TAB: Clients -->
+    <div id="tab-clients" class="tab-content">
+      <div class="card">
+        <h2>Onboard a New Client</h2>
+        <form id="onboard-client-form" onsubmit="onboardClient(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Client Name / Organization</label>
+              <input type="text" id="client-name" placeholder="e.g. Umang Hospital" required>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Phone Number ID</label>
+              <input type="text" id="client-phone-id" placeholder="e.g. 1201782259675601" required>
+            </div>
+            <div class="form-group">
+              <label>Meta App ID</label>
+              <input type="text" id="client-app-id" placeholder="e.g. 1009514481606880" required>
+            </div>
+            <div class="form-group">
+              <label>Meta App Secret</label>
+              <input type="text" id="client-app-secret" placeholder="e.g. c4176c068e..." required>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Business Account ID</label>
+              <input type="text" id="client-business-id" placeholder="e.g. 1642047753726751" required>
+            </div>
+            <div class="form-group">
+              <label>Custom Webhook Verify Token</label>
+              <input type="text" id="client-verify-token" value="pagarbook_whatsapp_verify_token_2026" required>
+            </div>
+            <div class="form-group full-width">
+              <label>Permanent Access Token</label>
+              <input type="text" id="client-access-token" placeholder="EAAOW..." required>
+            </div>
+          </div>
+          <button type="submit" class="btn">Onboard Client & Create DB</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Onboarded Clients</h2>
+        <div class="data-table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client Name</th>
+                <th>Database</th>
+                <th>Phone Number ID</th>
+                <th>Verify Token</th>
+                <th>Webhook Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="clients-table-body">
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Agents -->
+    <div id="tab-agents" class="tab-content">
+      <div class="card">
+        <h2 id="agent-config-title">Configure Chatbot Agent</h2>
+        <form id="agent-config-form" onsubmit="saveAgentConfig(event)">
+          <div class="form-group">
+            <label>Agent Name / Persona</label>
+            <input type="text" id="agent-name" placeholder="e.g. Sakshi" required>
+          </div>
+          <div class="form-group">
+            <label>LLM Engine Model</label>
+            <select id="agent-model">
+              <option value="gpt-4o-mini">OpenAI gpt-4o-mini (Vision + Text)</option>
+              <option value="llama-3.1-70b-versatile">Groq Llama 3.1 70B (Fast Text)</option>
+              <option value="mixtral-8x7b-32768">Groq Mixtral 8x7B (Low latency Text)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Response Temperature (0.0 = Precise, 1.0 = Creative)</label>
+            <input type="number" id="agent-temp" step="0.1" min="0" max="1" value="0.3" required>
+          </div>
+          <div class="form-group">
+            <label>System Prompt (Personas, Guidelines, Workflows)</label>
+            <textarea id="agent-prompt" placeholder="Define your agent identity and how they should answer..." required></textarea>
+          </div>
+          <button type="submit" class="btn">Save Agent Configurations</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB: Documents -->
+    <div id="tab-documents" class="tab-content">
+      <div class="card">
+        <h2>Upload Document to Knowledge Base (PDF / DOCX / TXT)</h2>
+        <form id="upload-doc-form" onsubmit="uploadDocument(event)">
+          <div class="form-group">
+            <label>Select Document File</label>
+            <input type="file" id="doc-file-input" accept=".pdf,.docx,.txt" required>
+          </div>
+          <button type="submit" class="btn" id="upload-doc-btn">Upload & Vectorize</button>
+        </form>
+        <div id="upload-status" style="margin-top:16px; font-size:14px; font-weight:500;"></div>
+      </div>
+      <div class="card">
+        <h2>Upload Guidelines</h2>
+        <p style="font-size: 14px; line-height: 1.6; color: var(--text-muted);">
+          Documents uploaded will be split into chunks of 1000 characters (200 characters overlap) and vectorized using OpenAI's embedding API. All chunks are stored securely inside the client's isolated database.
+        </p>
+      </div>
+    </div>
+
+    <!-- TAB: Campaigns -->
+    <div id="tab-campaigns" class="tab-content">
+      <div class="card">
+        <h2>Dispatch Bulk Template Campaign</h2>
+        <form id="campaign-form" onsubmit="launchCampaign(event)">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Campaign Title</label>
+              <input type="text" id="camp-name" placeholder="e.g. Free Health Checkup Drive" required>
+            </div>
+            <div class="form-group">
+              <label>WhatsApp Template Name (Meta Registered)</label>
+              <input type="text" id="camp-template" placeholder="e.g. checkup_drive_invite" required>
+            </div>
+            <div class="form-group">
+              <label>Language Code</label>
+              <input type="text" id="camp-lang" value="en" placeholder="e.g. en, hi" required>
+            </div>
+            <div class="form-group">
+              <label>Recipient List (Comma-separated numbers with country code)</label>
+              <textarea id="camp-recipients" placeholder="e.g. +918588072727, +918882801378" required></textarea>
+            </div>
+            <div class="form-group full-width">
+              <label>Template Component Variables (Optional JSON Array)</label>
+              <textarea id="camp-components" placeholder='e.g. [{"type": "body", "parameters": [{"type": "text", "text": "Sakshi"}]}]'></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn">Launch Campaign & Send Messages</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB: Chats -->
     <div id="tab-chats" class="tab-content">
       <div class="console-pane">
         <div class="session-list">
           <div class="session-list-header">Conversation Sessions</div>
           <div class="session-items" id="session-items-list">
-            <!-- Dynamic Items -->
+            <!-- Dynamic Sessions -->
           </div>
         </div>
-        <div class="chat-area" id="chat-area-container">
+        <div class="chat-area">
           <div class="empty-state" id="chat-empty-state">
             <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-            Select a session from the list to view chat transcript.
+            Select a session from the list to view the chat log history.
           </div>
           <div style="display: none; height: 100%; flex-direction: column;" id="chat-active-state">
             <div class="chat-header">
@@ -563,16 +945,16 @@
       </div>
     </div>
 
-    <!-- Tab 3: Knowledge Base Sandbox -->
+    <!-- TAB: Vector KB Sandbox -->
     <div id="tab-knowledge" class="tab-content">
       <div class="sandbox-container">
         <div class="search-box">
-          <input type="text" id="sandbox-search-input" placeholder="Type a message to search the vector database (e.g., 'What is PagarBook pricing?')...">
-          <button onclick="performSandboxSearch()">Search KB</button>
+          <input type="text" id="sandbox-search-input" placeholder="Type a message to test semantic similarity lookup (e.g. 'pricing details')...">
+          <button onclick="performSandboxSearch()">Search DB Chunks</button>
         </div>
         <div class="search-results" id="sandbox-results-container">
           <div class="empty-state">
-            Type a query above to see semantic similarity search matches.
+            Type a query above to see pgvector match results for the active client database.
           </div>
         </div>
       </div>
@@ -580,7 +962,21 @@
   </div>
 
   <script>
-    // Tab switching logic
+    let activeClientId = localStorage.getItem('active_client_id') || '';
+    let clientsList = [];
+
+    // Initialize Page
+    window.onload = async () => {
+      await fetchClients();
+      loadStats();
+      
+      setInterval(() => {
+        const now = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
+      }, 1000);
+    };
+
+    // Switch Tabs
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -591,8 +987,12 @@
 
       const titles = {
         'dashboard': 'Dashboard Overview',
-        'chats': 'Active Conversations logs',
-        'knowledge': 'Knowledge Base Search Playground'
+        'clients': 'Client Account Configurations',
+        'agents': 'AI Agents Persona Settings',
+        'documents': 'Knowledge Base Documents',
+        'campaigns': 'Bulk Campaign Broadcaster',
+        'chats': 'Active Chat Session Transcripts',
+        'knowledge': 'Vector KB Similarity Sandbox'
       };
       document.getElementById('page-title').textContent = titles[tabId];
 
@@ -600,35 +1000,268 @@
       if (tabId === 'chats') loadSessions();
     }
 
-    // Format clock
-    setInterval(() => {
-      const now = new Date();
-      document.getElementById('current-time').textContent = now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true });
-    }, 1000);
+    // Fetch Clients List
+    async function fetchClients() {
+      try {
+        const res = await fetch('/api/clients');
+        clientsList = await res.json();
+        
+        // Populate dropdown
+        const dropdown = document.getElementById('active-client-dropdown');
+        dropdown.innerHTML = '<option value="">-- Select Client --</option>';
+        
+        const tableBody = document.getElementById('clients-table-body');
+        tableBody.innerHTML = '';
+
+        clientsList.forEach(client => {
+          const opt = document.createElement('option');
+          opt.value = client.id;
+          opt.textContent = client.name;
+          if (client.id === activeClientId) {
+            opt.selected = true;
+          }
+          dropdown.appendChild(opt);
+
+          // Populate Table Row
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td style="font-weight: 600;">${client.name}</td>
+            <td><code>${client.db_name}</code></td>
+            <td><code>${client.phone_number_id}</code></td>
+            <td><code>${client.webhook_verify_token}</code></td>
+            <td>
+              <label class="switch">
+                <input type="checkbox" ${client.is_listening ? 'checked' : ''} onchange="toggleClientWebhook('${client.phone_number_id}', this.checked)">
+                <span class="slider"></span>
+              </label>
+            </td>
+            <td>
+              <span class="badge info">active</span>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+
+        // Set default active if none chosen
+        if (!activeClientId && clientsList.length > 0) {
+          activeClientId = clientsList[0].id;
+          localStorage.setItem('active_client_id', activeClientId);
+          dropdown.value = activeClientId;
+        }
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+      }
+    }
+
+    // Change Active Client context
+    function changeActiveClient() {
+      const dropdown = document.getElementById('active-client-dropdown');
+      activeClientId = dropdown.value;
+      localStorage.setItem('active_client_id', activeClientId);
+      console.log('Switched client context to:', activeClientId);
+      
+      // Refresh current tab
+      loadStats();
+      loadSessions();
+      document.getElementById('agent-config-form').reset();
+    }
+
+    // Toggle Webhook listening status
+    async function toggleClientWebhook(phoneId, isChecked) {
+      try {
+        await fetch(`/api/clients/${phoneId}/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_listening: isChecked })
+        });
+      } catch (err) {
+        console.error('Error toggling webhook:', err);
+      }
+    }
+
+    // Onboard Client
+    async function onboardClient(event) {
+      event.preventDefault();
+      const payload = {
+        name: document.getElementById('client-name').value.trim(),
+        phone_number_id: document.getElementById('client-phone-id').value.trim(),
+        app_id: document.getElementById('client-app-id').value.trim(),
+        app_secret: document.getElementById('client-app-secret').value.trim(),
+        whatsapp_business_id: document.getElementById('client-business-id').value.trim(),
+        webhook_verify_token: document.getElementById('client-verify-token').value.trim(),
+        system_access_token: document.getElementById('client-access-token').value.trim(),
+      };
+
+      try {
+        const res = await fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          alert(data.message);
+          document.getElementById('onboard-client-form').reset();
+          await fetchClients();
+          changeActiveClient();
+        } else {
+          alert('Onboarding failed: ' + data.error);
+        }
+      } catch (err) {
+        alert('Request error: ' + err.message);
+      }
+    }
+
+    // Save Agent Configuration
+    async function saveAgentConfig(event) {
+      event.preventDefault();
+      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
+
+      const payload = {
+        client_id: activeClientId,
+        name: document.getElementById('agent-name').value.trim(),
+        model_name: document.getElementById('agent-model').value,
+        temperature: parseFloat(document.getElementById('agent-temp').value),
+        system_prompt: document.getElementById('agent-prompt').value.trim(),
+      };
+
+      try {
+        const res = await fetch('/api/agents', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Agent configurations saved!');
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error saving prompt: ' + err.message);
+      }
+    }
+
+    // Upload Document
+    async function uploadDocument(event) {
+      event.preventDefault();
+      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
+
+      const fileInput = document.getElementById('doc-file-input');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const statusDiv = document.getElementById('upload-status');
+      const uploadBtn = document.getElementById('upload-doc-btn');
+      statusDiv.textContent = 'Reading file...';
+      uploadBtn.disabled = true;
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result.split(',')[1];
+        statusDiv.textContent = 'Uploading and vectorizing document chunks...';
+
+        try {
+          const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: activeClientId,
+              file_name: file.name,
+              file_data: base64Data
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            statusDiv.innerHTML = `<span style="color:var(--success);">✅ ${data.message}</span>`;
+            fileInput.value = '';
+          } else {
+            statusDiv.innerHTML = `<span style="color:var(--danger);">❌ Ingestion failed: ${data.error}</span>`;
+          }
+        } catch (err) {
+          statusDiv.innerHTML = `<span style="color:var(--danger);">❌ Connection error: ${err.message}</span>`;
+        } finally {
+          uploadBtn.disabled = false;
+        }
+      };
+
+      reader.readAsDataURL(file);
+    }
+
+    // Launch Campaign
+    async function launchCampaign(event) {
+      event.preventDefault();
+      if (!activeClientId) return alert('Please select a client context from the dropdown first.');
+
+      const cleanList = document.getElementById('camp-recipients').value
+        .split(',')
+        .map(num => num.trim())
+        .filter(num => num.length > 0);
+
+      let components = null;
+      const compText = document.getElementById('camp-components').value.trim();
+      if (compText) {
+        try {
+          components = JSON.parse(compText);
+        } catch (e) {
+          return alert('Invalid Component variables JSON formatting!');
+        }
+      }
+
+      const payload = {
+        client_id: activeClientId,
+        name: document.getElementById('camp-name').value.trim(),
+        template_name: document.getElementById('camp-template').value.trim(),
+        language_code: document.getElementById('camp-lang').value.trim(),
+        recipients: cleanList,
+        components
+      };
+
+      try {
+        const res = await fetch('/api/campaigns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Campaign launched! Messages enqueued in BullMQ.');
+          document.getElementById('campaign-form').reset();
+        } else {
+          alert('Failed launching: ' + data.error);
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
 
     // Fetch Stats
     async function loadStats() {
+      if (!activeClientId) return;
       try {
-        const res = await fetch('/api/stats');
+        const res = await fetch(`/api/stats?client_id=${activeClientId}`);
         const data = await res.json();
-        document.getElementById('stat-conversations').textContent = data.totalConversations;
-        document.getElementById('stat-kb-chunks').textContent = data.totalDocuments;
-        document.getElementById('uptime').textContent = `Uptime: ${data.uptime}`;
+        document.getElementById('stat-kb-chunks').textContent = data.totalDocuments || 0;
+        document.getElementById('stat-chat-sessions').textContent = data.totalConversations || 0;
+        document.getElementById('system-uptime').textContent = `Uptime: ${data.uptime}`;
       } catch (err) {
         console.error('Error fetching stats:', err);
       }
     }
 
-    // Fetch Sessions
+    // Load Sessions
     async function loadSessions() {
+      if (!activeClientId) return;
       try {
-        const res = await fetch('/api/sessions');
+        const res = await fetch(`/api/sessions?client_id=${activeClientId}`);
         const sessions = await res.json();
         const container = document.getElementById('session-items-list');
         container.innerHTML = '';
         
         if (sessions.length === 0) {
-          container.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 13px;">No sessions found</div>';
+          container.innerHTML = '<div class="empty-state" style="padding: 20px; font-size: 13px;">No active sessions found.</div>';
           return;
         }
 
@@ -638,21 +1271,27 @@
           item.onclick = () => loadChat(sess.session_id);
           item.id = `session-${sess.session_id}`;
           
-          const phone = sess.session_id.split('_')[0];
-          const date = sess.session_id.split('_')[1] || '';
-          
+          const phone = sess.customer_phone;
+          const date = new Date(sess.last_interaction).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+          const statusText = sess.session_status === 'active' ? 'AI Bot' : (sess.session_status === 'paused' ? 'Paused' : 'Manual');
+          const badgeClass = sess.session_status === 'active' ? 'success' : (sess.session_status === 'paused' ? 'warning' : 'danger');
+
           item.innerHTML = `
-            <div class="phone">+${phone}</div>
-            <div class="date">${date} (${sess.msg_count} messages)</div>
+            <div class="phone">${phone}</div>
+            <div class="meta-row">
+              <span>${sess.msg_count} messages</span>
+              <span class="badge ${badgeClass}">${statusText}</span>
+            </div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">Last: ${date}</div>
           `;
           container.appendChild(item);
         });
       } catch (err) {
-        console.error('Error fetching sessions:', err);
+        console.error('Error loading sessions:', err);
       }
     }
 
-    // Load chat transcript
+    // Load Chat messages
     async function loadChat(sessionId) {
       document.querySelectorAll('.session-item').forEach(item => item.classList.remove('active'));
       const activeItem = document.getElementById(`session-${sessionId}`);
@@ -661,14 +1300,11 @@
       document.getElementById('chat-empty-state').style.display = 'none';
       document.getElementById('chat-active-state').style.display = 'flex';
       
-      document.getElementById('active-session-title').textContent = `Phone: +${sessionId.split('_')[0]}`;
-      document.getElementById('active-session-meta').textContent = `Session: ${sessionId}`;
-
       const messagesContainer = document.getElementById('chat-messages-container');
-      messagesContainer.innerHTML = '<div>Loading conversation...</div>';
+      messagesContainer.innerHTML = '<div>Loading conversation history...</div>';
 
       try {
-        const res = await fetch(`/api/sessions/${sessionId}`);
+        const res = await fetch(`/api/sessions/${sessionId}?client_id=${activeClientId}`);
         const messages = await res.json();
         messagesContainer.innerHTML = '';
 
@@ -682,42 +1318,39 @@
           messagesContainer.appendChild(bubble);
         });
         
-        // Scroll to bottom
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       } catch (err) {
-        console.error('Error loading chat:', err);
-        messagesContainer.innerHTML = '<div>Error loading messages</div>';
+        console.error('Error loading chat transcript:', err);
+        messagesContainer.innerHTML = '<div>Error loading transcript.</div>';
       }
     }
 
-    // Perform Vector Search Sandbox query
+    // Perform Vector Search sandbox query
     async function performSandboxSearch() {
       const query = document.getElementById('sandbox-search-input').value.trim();
-      if (!query) return;
+      if (!query || !activeClientId) return;
 
       const container = document.getElementById('sandbox-results-container');
-      container.innerHTML = '<div class="empty-state">Searching vector database...</div>';
+      container.innerHTML = '<div class="empty-state">Searching isolated vector DB chunks...</div>';
 
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/search?client_id=${activeClientId}&q=${encodeURIComponent(query)}`);
         const results = await res.json();
         container.innerHTML = '';
 
         if (results.length === 0) {
-          container.innerHTML = '<div class="empty-state">No matching documents found.</div>';
+          container.innerHTML = '<div class="empty-state">No matching vector chunks found.</div>';
           return;
         }
 
         results.forEach(item => {
           const card = document.createElement('div');
           card.className = 'result-card';
-          
-          const score = (item.similarity * 100).toFixed(1) + '% match';
-          const source = item.metadata?.source || 'Knowledge Base';
+          const score = (item.similarity * 100).toFixed(1) + '% similarity';
 
           card.innerHTML = `
             <div class="result-card-header">
-              <div class="source">${source} (Chunk #${item.metadata?.chunk_index ?? 0})</div>
+              <div class="source">Source File: ${item.metadata?.source || 'Uploaded Document'}</div>
               <div class="score">${score}</div>
             </div>
             <div class="content">${item.content}</div>
@@ -725,13 +1358,10 @@
           container.appendChild(card);
         });
       } catch (err) {
-        console.error('Error searching vector DB:', err);
+        console.error('Error querying vector DB sandbox:', err);
         container.innerHTML = '<div class="empty-state">Error querying vector database.</div>';
       }
     }
-
-    // Initialize
-    loadStats();
   </script>
 </body>
 </html>

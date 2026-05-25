@@ -12,6 +12,8 @@ services:
     environment:
       - PORT=3000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - REDIS_URL=redis://redis:6739
       - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
       - WHATSAPP_PHONE_NUMBER_ID=${WHATSAPP_PHONE_NUMBER_ID}
       - WHATSAPP_VERIFY_TOKEN=${WHATSAPP_VERIFY_TOKEN}
@@ -31,6 +33,16 @@ services:
       - "caddy_0=http://pagarbook-bot.76.13.250.173.sslip.io"
       - "caddy_0.handle_path.0_reverse_proxy={{upstreams 3000}}"
       - "caddy_ingress_network=coolify"
+
+  redis:
+    image: redis:alpine
+    container_name: pagarbook-redis-container
+    restart: unless-stopped
+    command: redis-server --port 6739
+    networks:
+      - coolify
+    ports:
+      - "127.0.0.1:6739:6739"
 
 networks:
   coolify:
