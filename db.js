@@ -266,4 +266,5 @@ module.exports = {
   createTenantDatabase,
   findClientByPhoneId,
   centralDbConfig,
+  runTenantMigrations,
 };
