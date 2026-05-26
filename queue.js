@@ -80,13 +80,15 @@ function initQueueWorker() {
       }
     };
     if (components) {
-      // Dynamic personalization: Replace {{name}} with recipientName (or Customer)
+      // Dynamic personalization: Replace {{name}} or {{__contact_name__}} with recipientName (or Customer)
       const personalizedComponents = JSON.parse(JSON.stringify(components));
       personalizedComponents.forEach(comp => {
         if (comp.parameters) {
           comp.parameters.forEach(param => {
             if (param.type === 'text' && typeof param.text === 'string') {
-              param.text = param.text.replace(/\{\{name\}\}/gi, recipientName || 'Customer');
+              param.text = param.text
+                .replace(/\{\{name\}\}/gi, recipientName || 'Customer')
+                .replace(/\{\{__contact_name__\}\}/gi, recipientName || 'Customer');
             }
           });
         }

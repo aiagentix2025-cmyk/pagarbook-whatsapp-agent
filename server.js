@@ -1037,7 +1037,7 @@ app.post('/api/contacts/bulk', async (req, res) => {
       inserted++;
     }
 
-    res.json({ success: true, count: inserted });
+    res.json({ success: true, count: inserted, imported: inserted });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1276,29 +1276,68 @@ app.post('/webhook', async (req, res) => {
 
       if (messageObj.type === 'text') {
         userTextContent = messageObj.text.body;
-      } else if (messageObj.type === 'interactive') {
+      } else if (messageObj.type === 'interactive' || messageObj.type === 'button') {
         // Handle Quick Reply buttons or List replies from campaigns
-        const interactive = messageObj.interactive;
-        if (interactive.type === 'button_reply') {
-          userTextContent = interactive.button_reply.title; // Fallback text is button title
-          console.log(`Interactive button reply clicked: "${userTextContent}"`);
-          
-          // Trigger Chatbot Activation
-          await tenantPool.query(
-            "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
-            [session.id]
-          );
-          session.session_status = 'active';
-        } else if (interactive.type === 'list_reply') {
-          userTextContent = interactive.list_reply.title;
-          
-          // Trigger Chatbot Activation
-          await tenantPool.query(
-            "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
-            [session.id]
-          );
-          session.session_status = 'active';
+        if (messageObj.type === 'interactive') {
+          const interactive = messageObj.interactive;
+          if (interactive.type === 'button_reply') {
+            userTextContent = interactive.button_reply.title; // Use button title as text content
+          } else if (interactive.type === 'list_reply') {
+            userTextContent = interactive.list_reply.title;
+          }
+        } else if (messageObj.type === 'button') {
+          userTextContent = messageObj.button.text; // Use template button text
         }
+
+        console.log(`[Webhook] Button/Interactive reply clicked: "${userTextContent}" from ${recipientPhone}`);
+        
+        // Trigger Chatbot Activation — button clicks should ALWAYS activate session
+        await tenantPool.query(
+          "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+          [session.id]
+        );
+        session.session_status = 'active';
+
+        // === SPECIAL: "Chat with us" button — send Puja Sharma intro immediately ===
+        const CHAT_TRIGGERS = ['chat with us', 'chat with me', 'chat', 'start chat', 'talk to us'];
+        const btnTitleLower = (userTextContent || '').toLowerCase().trim();
+        if (CHAT_TRIGGERS.some(t => btnTitleLower.includes(t))) {
+          console.log(`[Webhook] "Chat with us" button trigger from ${recipientPhone} — sending intro.`);
+
+          // Check if intro was already sent in this session
+          const introCheck = await tenantPool.query(
+            `SELECT 1 FROM public.chat_messages WHERE session_id = $1 AND sender_type = 'ai' 
+             AND message_content LIKE '%I help businesses manage%' LIMIT 1`,
+            [session.id]
+          );
+
+          let introMsg;
+          if (introCheck.rows.length > 0) {
+            // Intro already sent — send shorter follow-up
+            introMsg = agent.intro_already_sent_message || 
+              "Sure 🙂 How can I help you with PagarBook today?";
+          } else {
+            // First time — send full intro
+            introMsg = agent.intro_message || 
+              "Hi, I'm Puja Sharma 🙂\nI help businesses manage staff attendance, payroll/salary calculation, employee records, and workforce tracking with PagarBook.\nHow can I assist you today?";
+          }
+
+          // Log user button click
+          await tenantPool.query(
+            `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) 
+             VALUES ($1, 'human', 'text', $2)`,
+            [session.id, userTextContent]
+          );
+          // Log and send intro
+          await tenantPool.query(
+            `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) 
+             VALUES ($1, 'ai', 'text', $2)`,
+            [session.id, introMsg]
+          );
+          await sendWhatsAppMessage(recipientPhone, introMsg, client.system_access_token, client.phone_number_id);
+          return;
+        }
+        // Other button replies fall through to the normal LLM pipeline below
       } else if (messageObj.type === 'image') {
         mediaId = messageObj.image.id;
         userTextContent = messageObj.image.caption || 'Image upload';
@@ -1383,9 +1422,9 @@ app.post('/webhook', async (req, res) => {
       }
 
       // F. Handle Bot Trigger Action
-      // Auto-activate session on ANY incoming text message so the bot always replies.
+      // Auto-activate session on ANY incoming text/image/interactive/button message so the bot always replies.
       if (session.session_status !== 'active') {
-        if (messageObj.type === 'text' || messageObj.type === 'image') {
+        if (messageObj.type === 'text' || messageObj.type === 'image' || messageObj.type === 'interactive' || messageObj.type === 'button') {
           console.log(`Auto-activating session for ${recipientPhone} on incoming message.`);
           await tenantPool.query(
             "UPDATE public.chat_sessions SET session_status = 'active', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",

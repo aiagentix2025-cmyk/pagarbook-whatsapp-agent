@@ -941,11 +941,12 @@
                     <th>Category</th>
                     <th>Language</th>
                     <th>Status</th>
+                    <th>Template ID</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody id="templates-tbody">
-                  <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--muted);">Select a client to load templates.</td></tr>
+                  <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--muted);">Select a client to load templates.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -1807,6 +1808,12 @@
       
       if (matches.length > 0) {
         hasFields = true;
+        // Show a helper note about dynamic name mapping
+        const note = document.createElement('div');
+        note.style = 'background: var(--primary-glow); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--primary); margin-bottom:4px; border:1px solid rgba(99,102,241,0.15);';
+        note.innerHTML = '💡 <strong>Tip:</strong> Toggle <em>"Use Contact Name"</em> to send each recipient their own name from your contact list.';
+        vr.appendChild(note);
+
         // Deduplicate variable numbers
         const seen = new Set();
         matches.forEach(m => {
@@ -1814,12 +1821,26 @@
           if (seen.has(num)) return; seen.add(num);
           const row = document.createElement('div');
           row.className = 'var-row';
+          row.style = 'display:flex; flex-direction:column; gap:5px;';
+          
+          const inputId = `camp-var-${num}`;
           row.innerHTML = `
-            <label>Body Variable {{${num}}}</label>
-            <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
-              class="var-input" data-var="${num}" placeholder="Value for {{${num}}}" oninput="updatePreview()">
+            <label style="margin-bottom:0;">Body Variable <code>{{${num}}}</code></label>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:5px;">
+                <label class="sw" style="transform:scale(0.85); transform-origin:left;">
+                  <input type="checkbox" id="camp-var-use-name-${num}" onchange="toggleVarNameMapping(${num})">
+                  <span class="sl"></span>
+                </label>
+                <span style="font-size:12px; color:var(--muted);">Use Contact Name</span>
+              </div>
+              <input id="${inputId}" data-var="${num}" placeholder="Fixed value for {{${num}}}" oninput="updatePreview()"
+                style="flex:1; min-width:140px; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;">
+            </div>
+            <div id="camp-var-name-hint-${num}" style="display:none; font-size:11px; color:var(--success); font-weight:600;">✅ Will use each contact's name dynamically</div>
           `;
-          row.querySelector('input').classList.add('var-input');
+          // Mark input with var-input class
+          row.querySelector('input[data-var]').classList.add('var-input');
           vr.appendChild(row);
         });
       }
@@ -1829,6 +1850,24 @@
       } else {
         vb.style.display = 'none';
       }
+    }
+
+    function toggleVarNameMapping(num) {
+      const checkbox = document.getElementById('camp-var-use-name-' + num);
+      const input = document.getElementById('camp-var-' + num);
+      const hint = document.getElementById('camp-var-name-hint-' + num);
+      if (checkbox.checked) {
+        input.value = '{{__contact_name__}}';
+        input.disabled = true;
+        input.style.opacity = '0.5';
+        hint.style.display = 'block';
+      } else {
+        input.value = '';
+        input.disabled = false;
+        input.style.opacity = '1';
+        hint.style.display = 'none';
+      }
+      updatePreview();
     }
 
     // ─── Leads Management ───
@@ -2397,29 +2436,102 @@
     async function loadTemplates() {
       if (!clientId) return;
       const tbody = document.getElementById('templates-tbody');
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Loading templates...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">Loading templates...</td></tr>';
       try {
         const r = await fetch('/api/templates?client_id=' + clientId);
         const data = await r.json();
         tbody.innerHTML = '';
         if (!data || data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">No templates found.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No templates found.</td></tr>';
           return;
         }
         data.forEach(t => {
           const tr = document.createElement('tr');
-          const statusColor = t.status === 'APPROVED' ? 'var(--success)' : t.status === 'REJECTED' ? 'var(--danger)' : 'var(--warn)';
+          const statusColor = t.status === 'APPROVED' ? 'var(--success)' : t.status === 'REJECTED' ? 'var(--danger)' : 'var(--warning)';
+          const safeId = String(t.id).replace(/'/g, '');
+          const safeName = String(t.name).replace(/'/g, '');
           tr.innerHTML = `
             <td style="font-weight:600;">${t.name}</td>
-            <td>${t.language}</td>
             <td>${t.category}</td>
+            <td>${t.language}</td>
             <td><span style="color:${statusColor}; font-weight:600;">${t.status}</span></td>
             <td><code style="font-size:11px;">${t.id}</code></td>
+            <td>
+              <div style="display:flex; gap:5px;">
+                <button onclick="cloneTemplate('${safeName}')" style="padding:4px 9px; font-size:11px; border-radius:6px; border:1px solid var(--primary); background:var(--primary-glow); color:var(--primary); cursor:pointer; font-family:inherit; font-weight:600; white-space:nowrap;">✏️ Clone/Edit</button>
+                <button onclick="deleteTemplate('${safeName}', this)" style="padding:4px 9px; font-size:11px; border-radius:6px; border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.07); color:var(--danger); cursor:pointer; font-family:inherit; font-weight:600;">🗑 Delete</button>
+              </div>
+            </td>
           `;
           tbody.appendChild(tr);
         });
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger);">Error: ${e.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:20px; color:var(--danger);">Error: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function cloneTemplate(templateName) {
+      if (!clientId) return alert('Select a client first.');
+      try {
+        const r = await fetch('/api/templates?client_id=' + clientId);
+        const data = await r.json();
+        const tpl = data.find(t => t.name === templateName);
+        if (!tpl) return alert('Template not found.');
+
+        // Scroll to the Create Template form
+        document.getElementById('template-builder-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        
+        // Pre-fill the form with template data
+        document.getElementById('tmpl-name').value = tpl.name + '_copy';
+        document.getElementById('tmpl-category').value = tpl.category;
+        document.getElementById('tmpl-lang').value = tpl.language || 'en_US';
+        
+        const bodyComp = tpl.components?.find(c => c.type === 'BODY');
+        if (bodyComp) document.getElementById('tmpl-body').value = bodyComp.text || '';
+        
+        const footerComp = tpl.components?.find(c => c.type === 'FOOTER');
+        if (footerComp) document.getElementById('tmpl-footer').value = footerComp.text || '';
+        
+        const headerComp = tpl.components?.find(c => c.type === 'HEADER');
+        if (headerComp) {
+          document.getElementById('tmpl-header-type').value = headerComp.format || 'NONE';
+          if (headerComp.format === 'TEXT') {
+            document.getElementById('tmpl-header').value = headerComp.text || '';
+          }
+        } else {
+          document.getElementById('tmpl-header-type').value = 'NONE';
+        }
+        
+        toggleTmplHeaderType();
+        updateVariableInputs();
+        updateLivePreview();
+        
+        // Show a visual hint
+        const btn = document.getElementById('tmpl-create-btn');
+        btn.textContent = 'Create New Template (Cloned)';
+        btn.style.background = 'var(--warning)';
+        setTimeout(() => { btn.textContent = 'Create Template'; btn.style.background = ''; }, 5000);
+      } catch (err) {
+        alert('Error cloning template: ' + err.message);
+      }
+    }
+
+    async function deleteTemplate(templateName, btn) {
+      if (!clientId) return alert('Select a client first.');
+      if (!confirm('Delete template "' + templateName + '" from Meta? This cannot be undone.')) return;
+      btn.disabled = true; btn.textContent = 'Deleting...';
+      try {
+        const r = await fetch('/api/templates/' + encodeURIComponent(templateName) + '?client_id=' + clientId, { method: 'DELETE' });
+        const d = await r.json();
+        if (r.ok) {
+          loadTemplates();
+        } else {
+          alert('Delete failed: ' + (d.error || 'Unknown error'));
+          btn.disabled = false; btn.textContent = '🗑 Delete';
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+        btn.disabled = false; btn.textContent = '🗑 Delete';
       }
     }
 
@@ -3232,53 +3344,112 @@
       }
     }
 
-    async function importContactsCsv(e) {
+    // importCrmCsvExcel — handles both CSV and Excel (.xlsx/.xls) files
+    async function importCrmCsvExcel(e) {
       const file = e.target.files[0];
-      if (!file || !clientId) return;
+      if (!file) return;
+      if (!clientId) {
+        alert('Please select a client from the dropdown first.');
+        e.target.value = ''; return;
+      }
       
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const text = evt.target.result;
+      const statusEl = document.getElementById('crm-import-status');
+      statusEl.style.color = 'var(--muted)';
+      statusEl.textContent = 'Parsing file...';
+
+      try {
+        let contacts = [];
+        const ext = file.name.split('.').pop().toLowerCase();
+        
+        if (ext === 'csv') {
+          // Parse CSV with FileReader
+          const text = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = e => res(e.target.result);
+            reader.onerror = rej;
+            reader.readAsText(file);
+          });
           const lines = text.split(/\r?\n/).filter(l => l.trim());
-          const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-          
-          let phoneIdx = headers.findIndex(h => /phone|mobile|number/.test(h));
-          let nameIdx = headers.findIndex(h => /name|contact/.test(h));
-          if (phoneIdx === -1) return alert('No phone column found in CSV.');
-          
-          let contacts = [];
+          if (lines.length < 2) { statusEl.textContent = 'File is empty or has no data rows.'; return; }
+          const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+          let phoneIdx = headers.findIndex(h => /phone|mobile|number|contact/.test(h) && !/name/.test(h));
+          if (phoneIdx === -1) phoneIdx = headers.findIndex(h => /phone|mobile|number/.test(h));
+          let nameIdx = headers.findIndex(h => /^name$|contact.name|full.name|customer.name/.test(h));
+          if (nameIdx === -1) nameIdx = headers.findIndex(h => /name/.test(h));
+          let tagIdx = headers.findIndex(h => /tag|label|group/.test(h));
+          if (phoneIdx === -1) { statusEl.textContent = 'Error: No phone/mobile column found in CSV.'; statusEl.style.color='var(--danger)'; return; }
           for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',').map(c => c.trim());
+            const cols = lines[i].split(',').map(c => c.trim().replace(/"/g, ''));
+            if (!cols[phoneIdx]) continue;
             const phone = cols[phoneIdx].replace(/[^+\d]/g, '');
-            if (!phone) continue;
+            if (!phone || phone.length < 7) continue;
             contacts.push({
               name: nameIdx !== -1 ? cols[nameIdx] : '',
-              phone: phone.startsWith('+') ? phone : '+' + phone,
-              tags: ['imported']
+              phone: phone.startsWith('+') ? phone : '+91' + phone.replace(/^0/, ''),
+              tags: tagIdx !== -1 && cols[tagIdx] ? cols[tagIdx].split(';').map(t => t.trim()) : ['imported']
             });
           }
-          
-          if (!contacts.length) return alert('No valid contacts found.');
-          if (!confirm(`Import ${contacts.length} contacts?`)) return;
-          
-          // Bulk insert
-          for (const c of contacts) {
-             await fetch('/api/contacts', {
-               method: 'POST',
-               headers: { 'Content-Type': 'application/json' },
-               body: JSON.stringify({ client_id: clientId, ...c })
-             });
-          }
-          alert('Import complete!');
-          loadCrmContacts();
-          e.target.value = '';
-        } catch (err) {
-          alert('Error parsing CSV: ' + err.message);
+        } else if (ext === 'xlsx' || ext === 'xls') {
+          // Parse Excel with SheetJS
+          if (typeof XLSX === 'undefined') { statusEl.textContent = 'Error: SheetJS not loaded.'; statusEl.style.color='var(--danger)'; return; }
+          const arrayBuffer = await new Promise((res, rej) => {
+            const reader = new FileReader();
+            reader.onload = e => res(e.target.result);
+            reader.onerror = rej;
+            reader.readAsArrayBuffer(file);
+          });
+          const wb = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          rows.forEach(row => {
+            const keys = Object.keys(row).map(k => k.toLowerCase());
+            const getCol = (pattern) => {
+              const k = Object.keys(row).find(k => pattern.test(k.toLowerCase()));
+              return k ? String(row[k]).trim() : '';
+            };
+            let phoneRaw = getCol(/phone|mobile|number/) || '';
+            const phone = phoneRaw.replace(/[^+\d]/g, '');
+            if (!phone || phone.length < 7) return;
+            contacts.push({
+              name: getCol(/^name$|full.?name|contact.?name/) || getCol(/name/) || '',
+              phone: phone.startsWith('+') ? phone : '+91' + phone.replace(/^0/, ''),
+              tags: getCol(/tag|label|group/).split(';').map(t => t.trim()).filter(Boolean) || ['imported']
+            });
+          });
+        } else {
+          statusEl.textContent = 'Unsupported file type. Use .csv, .xlsx, or .xls';
+          statusEl.style.color = 'var(--danger)'; return;
         }
-      };
-      reader.readAsText(file);
+
+        if (!contacts.length) { statusEl.textContent = 'No valid contacts found. Check that your file has a Phone column.'; statusEl.style.color='var(--danger)'; return; }
+        if (!confirm('Import ' + contacts.length + ' contacts to CRM? Duplicates will be updated.')) { e.target.value = ''; statusEl.textContent = ''; return; }
+
+        // Use bulk import endpoint for speed
+        statusEl.textContent = 'Importing ' + contacts.length + ' contacts...';
+        const r = await fetch('/api/contacts/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: clientId, contacts })
+        });
+        const d = await r.json();
+        if (r.ok) {
+          statusEl.style.color = 'var(--success)';
+          statusEl.textContent = '✅ Imported ' + (d.imported || contacts.length) + ' contacts successfully!';
+          loadCrmContacts();
+        } else {
+          statusEl.style.color = 'var(--danger)';
+          statusEl.textContent = 'Import error: ' + (d.error || 'Unknown');
+        }
+        e.target.value = '';
+      } catch (err) {
+        statusEl.style.color = 'var(--danger)';
+        statusEl.textContent = 'Error: ' + err.message;
+        e.target.value = '';
+      }
     }
+
+    // Keep old function name as alias for backward compatibility
+    const importContactsCsv = importCrmCsvExcel;
 
     // ═══════════ FAILURE MODAL ════
     async function showFailureModal(campaignId, campaignName) {
