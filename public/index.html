@@ -449,9 +449,34 @@
                 </select>
               </div>
             </div>
-            <div class="fg"><label>Response Temperature — 0.0 Precise → 1.0 Creative</label><input id="a-temp" type="number" step="0.1" min="0" max="1" value="0.3" required></div>
+            <div class="two-col">
+              <div class="fg"><label>Response Temperature — 0.0 Precise → 1.0 Creative</label><input id="a-temp" type="number" step="0.1" min="0" max="1" value="0.3" required></div>
+              <div class="fg">
+                <label>Capabilities (Text &amp; Image Replies)</label>
+                <div style="display: flex; gap: 20px; align-items: center; margin-top: 10px;">
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; font-size: 13px;">
+                    <input type="radio" name="a-vision" id="a-vision-text" value="text" checked style="width: auto; margin: 0; cursor: pointer;">
+                    Text-based only
+                  </label>
+                  <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer; font-size: 13px;">
+                    <input type="radio" name="a-vision" id="a-vision-image" value="image" style="width: auto; margin: 0; cursor: pointer;">
+                    Handle &amp; analyze images
+                  </label>
+                </div>
+              </div>
+            </div>
             <div class="fg"><label>System Prompt — Persona, guidelines, workflow instructions</label>
               <textarea id="a-prompt" placeholder="You are Sakshi, a helpful sales representative for Pagarbook VMS…" style="min-height:300px;" required></textarea>
+            </div>
+            <div class="two-col">
+              <div class="fg">
+                <label>Custom Unsubscribe Message (STOP / UNSUBSCRIBE trigger)</label>
+                <textarea id="a-optout-msg" placeholder="e.g. You have been successfully unsubscribed..." style="min-height:80px; font-size:12.5px;"></textarea>
+              </div>
+              <div class="fg">
+                <label>Custom Resubscribe Message (START trigger)</label>
+                <textarea id="a-optin-msg" placeholder="e.g. Welcome back! You have re-subscribed..." style="min-height:80px; font-size:12.5px;"></textarea>
+              </div>
             </div>
             <button type="submit" class="btn" id="agent-save-btn">Save Agent Configuration</button>
             <div id="agent-msg" style="margin-top:12px; font-size:13px;"></div>
@@ -805,7 +830,15 @@
                 </select>
               </div>
               <div class="fg">
-                <label>Header Text (Optional)</label>
+                <label>Header Type</label>
+                <select id="tmpl-header-type" onchange="toggleTmplHeaderType()">
+                  <option value="NONE">None</option>
+                  <option value="TEXT">Text</option>
+                  <option value="IMAGE">Image</option>
+                </select>
+              </div>
+              <div class="fg" id="tmpl-header-text-container" style="display:none;">
+                <label>Header Text</label>
                 <input id="tmpl-header" placeholder="e.g. Welcome to Pagarbook!">
               </div>
               <div class="fg">
@@ -828,7 +861,7 @@
                 </div>
               </div>
 
-              <button type="submit" class="btn" style="width:100%; margin-top:10px;">Create Template</button>
+              <button type="submit" class="btn" id="tmpl-create-btn" style="width:100%; margin-top:10px;">Create Template</button>
             </form>
           </div>
         </div>
@@ -1165,9 +1198,19 @@
           document.getElementById('a-model').value = d.model_name || 'gpt-4o-mini';
           document.getElementById('a-temp').value = d.temperature || 0.3;
           document.getElementById('a-prompt').value = d.system_prompt || '';
+          document.getElementById('a-optout-msg').value = d.opt_out_message || '';
+          document.getElementById('a-optin-msg').value = d.opt_in_message || '';
+          if (d.vision_enabled) {
+            document.getElementById('a-vision-image').checked = true;
+          } else {
+            document.getElementById('a-vision-text').checked = true;
+          }
         } else {
           document.getElementById('agent-form').reset();
           document.getElementById('a-temp').value = 0.3;
+          document.getElementById('a-optout-msg').value = '';
+          document.getElementById('a-optin-msg').value = '';
+          document.getElementById('a-vision-text').checked = true;
         }
       } catch (e) { console.error(e); }
     }
@@ -1187,6 +1230,9 @@
             model_name: document.getElementById('a-model').value,
             temperature: parseFloat(document.getElementById('a-temp').value),
             system_prompt: document.getElementById('a-prompt').value.trim(),
+            vision_enabled: document.getElementById('a-vision-image').checked,
+            opt_out_message: document.getElementById('a-optout-msg').value.trim(),
+            opt_in_message: document.getElementById('a-optin-msg').value.trim(),
           })
         });
         const d = await r.json();
@@ -1593,7 +1639,7 @@
         comp = [{ type: 'body', parameters: params }];
       }
 
-      const recipients = leads.map(l => l.phone);
+      const recipients = leads.map(l => ({ name: l.name || '', phone: l.phone }));
 
       try {
         const r = await fetch('/api/campaigns', {
@@ -1814,7 +1860,14 @@
           const b = document.createElement('div');
           const type = m.message.type === 'human' ? 'human' : 'ai';
           b.className = 'bubble ' + type;
-          b.innerHTML = m.message.content.replace(/\n/g, '<br>');
+          
+          let contentHtml = '';
+          if (m.message.media_url) {
+            contentHtml += `<img src="${m.message.media_url}" style="max-width: 240px; border-radius: 8px; display: block; margin-bottom: 8px; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.1);" onclick="window.open('${m.message.media_url}', '_blank')">`;
+          }
+          contentHtml += m.message.content.replace(/\n/g, '<br>');
+          
+          b.innerHTML = contentHtml;
           body.appendChild(b);
         });
         body.scrollTop = body.scrollHeight;
@@ -1989,24 +2042,84 @@
       }
     }
 
+    function toggleTmplHeaderType() {
+      const type = document.getElementById('tmpl-header-type').value;
+      const container = document.getElementById('tmpl-header-text-container');
+      if (type === 'TEXT') {
+        container.style.display = 'block';
+      } else {
+        container.style.display = 'none';
+      }
+    }
+
     async function submitMetaTemplate(e) {
       e.preventDefault();
       if (!clientId) return alert('Select client first');
-      const name = document.getElementById('tpl-create-name').value.trim();
-      const category = document.getElementById('tpl-create-category').value;
-      const lang = document.getElementById('tpl-create-lang').value;
-      const body = document.getElementById('tpl-create-body').value.trim();
+      const name = document.getElementById('tmpl-name').value.trim();
+      const category = document.getElementById('tmpl-category').value;
+      const lang = document.getElementById('tmpl-lang').value;
+      const body = document.getElementById('tmpl-body').value.trim();
+      const headerType = document.getElementById('tmpl-header-type').value;
+      const headerText = document.getElementById('tmpl-header').value.trim();
+      const footerText = document.getElementById('tmpl-footer').value.trim();
       
       if (!name || !body) return alert('Name and body are required.');
-      const btn = document.getElementById('tpl-create-btn');
+      const btn = document.getElementById('tmpl-create-btn');
       btn.disabled = true; btn.textContent = 'Submitting...';
       
+      const components = [];
+      if (headerType === 'TEXT' && headerText) {
+        components.push({
+          type: 'HEADER',
+          format: 'TEXT',
+          text: headerText
+        });
+      } else if (headerType === 'IMAGE') {
+        components.push({
+          type: 'HEADER',
+          format: 'IMAGE',
+          example: {
+            header_handle: [
+              "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800"
+            ]
+          }
+        });
+      }
+      components.push({
+        type: 'BODY',
+        text: body
+      });
+      if (footerText) {
+        components.push({
+          type: 'FOOTER',
+          text: footerText
+        });
+      }
+      
+      const buttons = [];
+      const btnInputs = document.querySelectorAll('.tmpl-btn-input');
+      btnInputs.forEach(inp => {
+        const val = inp.value.trim();
+        if (val) {
+          buttons.push({
+            type: 'QUICK_REPLY',
+            text: val
+          });
+        }
+      });
+      if (buttons.length > 0) {
+        components.push({
+          type: 'BUTTONS',
+          buttons: buttons
+        });
+      }
+
       try {
         const r = await fetch('/api/templates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            client_id: clientId, name, category, language: lang, body_text: body
+            client_id: clientId, name, category, language: lang, components
           })
         });
         const d = await r.json();
@@ -2020,7 +2133,7 @@
       } catch (err) {
         alert('Error: ' + err.message);
       }
-      btn.disabled = false; btn.textContent = 'Submit to Meta';
+      btn.disabled = false; btn.textContent = 'Create Template';
     }
 
     // ═══════════ CRM CONTACTS ══════

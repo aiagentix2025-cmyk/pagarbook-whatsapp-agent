@@ -46,9 +46,28 @@ async function initCentralDb() {
         system_prompt TEXT NOT NULL,
         temperature NUMERIC(3,2) DEFAULT 0.3,
         model_name VARCHAR(100) DEFAULT 'gpt-4o-mini',
+        vision_enabled BOOLEAN DEFAULT FALSE,
+        opt_out_message TEXT,
+        opt_in_message TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Add vision_enabled column to public.ai_agents if it doesn't exist
+    await client.query(`
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS vision_enabled BOOLEAN DEFAULT FALSE;
+    `);
+
+    // Add opt_out_message column if it doesn't exist
+    await client.query(`
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS opt_out_message TEXT;
+    `);
+
+    // Add opt_in_message column if it doesn't exist
+    await client.query(`
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS opt_in_message TEXT;
+    `);
+
     console.log('Central tables initialized successfully.');
   } catch (err) {
     console.error('Error initializing central DB:', err);
@@ -163,8 +182,14 @@ async function runTenantMigrations(dbName) {
         sender_type VARCHAR(20) NOT NULL,
         message_type VARCHAR(20) DEFAULT 'text',
         message_content TEXT NOT NULL,
+        media_url TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Add media_url column to chat_messages if it doesn't exist
+    await client.query(`
+      ALTER TABLE public.chat_messages ADD COLUMN IF NOT EXISTS media_url TEXT;
     `);
 
     // 8. Create Contacts (CRM Address Book) table

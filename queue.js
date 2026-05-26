@@ -35,6 +35,7 @@ function initQueueWorker() {
   worker = new Worker('whatsappCampaigns', async (job) => {
     const { 
       recipientPhone, 
+      recipientName,
       templateName, 
       languageCode, 
       components, // template parameters
@@ -79,7 +80,18 @@ function initQueueWorker() {
       }
     };
     if (components) {
-      payload.template.components = components;
+      // Dynamic personalization: Replace {{name}} with recipientName (or Customer)
+      const personalizedComponents = JSON.parse(JSON.stringify(components));
+      personalizedComponents.forEach(comp => {
+        if (comp.parameters) {
+          comp.parameters.forEach(param => {
+            if (param.type === 'text' && typeof param.text === 'string') {
+              param.text = param.text.replace(/\{\{name\}\}/gi, recipientName || 'Customer');
+            }
+          });
+        }
+      });
+      payload.template.components = personalizedComponents;
     }
 
     try {
@@ -151,7 +163,10 @@ async function enqueueCampaign(client, campaignId, templateName, languageCode, r
   
   const jobs = [];
 
-  for (const phone of recipients) {
+  for (const rec of recipients) {
+    const phone = typeof rec === 'object' ? rec.phone : rec;
+    const name = typeof rec === 'object' ? rec.name : '';
+
     // 1. Create a log row as queued
     const logRes = await tenantPool.query(
       `INSERT INTO public.campaign_logs (campaign_id, recipient_phone, status) 
@@ -165,6 +180,7 @@ async function enqueueCampaign(client, campaignId, templateName, languageCode, r
       name: `campaign-msg-${phone}`,
       data: {
         recipientPhone: phone,
+        recipientName: name,
         templateName,
         languageCode,
         components,

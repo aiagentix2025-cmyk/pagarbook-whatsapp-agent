@@ -472,7 +472,7 @@ app.get('/api/sessions/:id', async (req, res) => {
     const tenantPool = db.getTenantPool(dbName);
 
     const result = await tenantPool.query(
-      'SELECT id, sender_type, message_type, message_content, created_at FROM public.chat_messages WHERE session_id = $1 ORDER BY id ASC',
+      'SELECT id, sender_type, message_type, message_content, media_url, created_at FROM public.chat_messages WHERE session_id = $1 ORDER BY id ASC',
       [sessionId]
     );
     
@@ -481,7 +481,8 @@ app.get('/api/sessions/:id', async (req, res) => {
       id: row.id,
       message: {
         type: row.sender_type === 'human' ? 'human' : 'ai',
-        content: row.message_content
+        content: row.message_content,
+        media_url: row.media_url
       }
     }));
     res.json(formatted);
@@ -528,7 +529,7 @@ app.get('/api/agents', async (req, res) => {
   try {
     const centralClient = await db.getCentralClient();
     const result = await centralClient.query(
-      'SELECT name, system_prompt, temperature, model_name FROM public.ai_agents WHERE client_id = $1',
+      'SELECT name, system_prompt, temperature, model_name, vision_enabled, opt_out_message, opt_in_message FROM public.ai_agents WHERE client_id = $1',
       [client_id]
     );
     centralClient.release();
@@ -545,7 +546,7 @@ app.get('/api/agents', async (req, res) => {
 
 // Configure system prompts or settings for AI Agent
 app.post('/api/agents', async (req, res) => {
-  const { client_id, name, system_prompt, temperature, model_name } = req.body;
+  const { client_id, name, system_prompt, temperature, model_name, vision_enabled, opt_out_message, opt_in_message } = req.body;
   if (!client_id || !name || !system_prompt) {
     return res.status(400).json({ error: 'Client ID, agent name, and system prompt are required.' });
   }
@@ -560,19 +561,45 @@ app.post('/api/agents', async (req, res) => {
         system_prompt TEXT NOT NULL,
         temperature NUMERIC(3,2) DEFAULT 0.3,
         model_name VARCHAR(100) DEFAULT 'gpt-4o-mini',
+        vision_enabled BOOLEAN DEFAULT FALSE,
+        opt_out_message TEXT,
+        opt_in_message TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
+    // Add columns dynamically to public.ai_agents if they don't exist
     await centralClient.query(`
-      INSERT INTO public.ai_agents (client_id, name, system_prompt, temperature, model_name)
-      VALUES ($1, $2, $3, $4, $5)
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS vision_enabled BOOLEAN DEFAULT FALSE;
+    `);
+    await centralClient.query(`
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS opt_out_message TEXT;
+    `);
+    await centralClient.query(`
+      ALTER TABLE public.ai_agents ADD COLUMN IF NOT EXISTS opt_in_message TEXT;
+    `);
+
+    await centralClient.query(`
+      INSERT INTO public.ai_agents (client_id, name, system_prompt, temperature, model_name, vision_enabled, opt_out_message, opt_in_message)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (client_id) DO UPDATE SET
         name = EXCLUDED.name,
         system_prompt = EXCLUDED.system_prompt,
         temperature = EXCLUDED.temperature,
-        model_name = EXCLUDED.model_name
-    `, [client_id, name, system_prompt, temperature || 0.3, model_name || 'gpt-4o-mini']);
+        model_name = EXCLUDED.model_name,
+        vision_enabled = EXCLUDED.vision_enabled,
+        opt_out_message = EXCLUDED.opt_out_message,
+        opt_in_message = EXCLUDED.opt_in_message
+    `, [
+      client_id, 
+      name, 
+      system_prompt, 
+      temperature || 0.3, 
+      model_name || 'gpt-4o-mini', 
+      vision_enabled === true,
+      opt_out_message || null,
+      opt_in_message || null
+    ]);
     
     centralClient.release();
     res.json({ message: 'AI Agent settings saved successfully.' });
@@ -612,9 +639,9 @@ app.post('/api/sessions/:id/reply', async (req, res) => {
     // Save message to chat_messages
     const contentToSave = (type === 'image' || type === 'document') ? (mediaUrl || message) : message;
     await tenantPool.query(
-      `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content)
-       VALUES ($1, 'agent', $2, $3)`,
-      [sessionId, type || 'text', contentToSave]
+      `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content, media_url)
+       VALUES ($1, 'agent', $2, $3, $4)`,
+      [sessionId, type || 'text', contentToSave, type === 'image' ? mediaUrl : null]
     );
 
     // Update session status to paused (takeover) and update activity
@@ -1024,6 +1051,26 @@ app.post('/webhook', async (req, res) => {
         return;
       }
 
+      // Send Read Receipt (blue tick) immediately after receipt is confirmed
+      try {
+        const readUrl = `https://graph.facebook.com/v18.0/${client.phone_number_id}/messages`;
+        await fetch(readUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${client.system_access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            status: 'read',
+            message_id: wamid
+          })
+        });
+        console.log(`Sent read receipt for wamid: ${wamid}`);
+      } catch (readErr) {
+        console.error(`Failed to send read receipt for wamid: ${wamid}`, readErr);
+      }
+
       // B. Unsubscribe / Compliance Check
       const unsubCheck = await tenantPool.query(
         'SELECT 1 FROM public.unsubscribed_contacts WHERE customer_phone = $1',
@@ -1140,9 +1187,10 @@ app.post('/webhook', async (req, res) => {
           "UPDATE public.chat_sessions SET session_status = 'inactive' WHERE id = $1",
           [session.id]
         );
+        const optOutMsg = agent.opt_out_message || "You have been successfully unsubscribed from this service. You will receive no further messages. Reply START at any time to resume.";
         await sendWhatsAppMessage(
           recipientPhone,
-          "You have been successfully unsubscribed from this service. You will receive no further messages. Reply START at any time to resume.",
+          optOutMsg,
           client.system_access_token,
           client.phone_number_id
         );
@@ -1150,9 +1198,10 @@ app.post('/webhook', async (req, res) => {
       }
       if (cleanUpper === 'START') {
         await tenantPool.query('DELETE FROM public.unsubscribed_contacts WHERE customer_phone = $1', [recipientPhone]);
+        const optInMsg = agent.opt_in_message || "Welcome back! You have re-subscribed to our messaging channel. How can I help you today?";
         await sendWhatsAppMessage(
           recipientPhone,
-          "Welcome back! You have re-subscribed to our messaging channel. How can I help you today?",
+          optInMsg,
           client.system_access_token,
           client.phone_number_id
         );
@@ -1210,11 +1259,27 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
+      // Download image first if present, to save its media_url when logging
+      let imageUrl = null;
+      let base64Image = null;
+      let imageMimeType = null;
+      if (hasImage && mediaId) {
+        try {
+          const downloaded = await media.downloadMetaMedia(mediaId, client.system_access_token);
+          imageUrl = await media.saveMedia(downloaded.buffer, `upload.${downloaded.extension}`, downloaded.mimeType);
+          console.log(`Image saved. URL: ${imageUrl}`);
+          base64Image = downloaded.buffer.toString('base64');
+          imageMimeType = downloaded.mimeType;
+        } catch (mediaErr) {
+          console.error('Failed downloading and saving image:', mediaErr);
+        }
+      }
+
       // Log User Query
       await tenantPool.query(
-        `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) 
-         VALUES ($1, 'human', $2, $3)`,
-        [session.id, hasImage ? 'image' : 'text', userTextContent]
+        `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content, media_url) 
+         VALUES ($1, 'human', $2, $3, $4)`,
+        [session.id, hasImage ? 'image' : 'text', userTextContent || (hasImage ? 'Image uploaded' : ''), imageUrl]
       );
 
       // G. Context-Aware RAG (Vector DB Search)
@@ -1224,7 +1289,6 @@ app.post('/webhook', async (req, res) => {
       console.log(`Found ${contextRows.length} relevant vector KB chunks.`);
 
       // H. Multimodal Image pipeline
-      let imageUrl = null;
       let openAiMessages = [];
 
       // System date details
@@ -1255,36 +1319,27 @@ app.post('/webhook', async (req, res) => {
         openAiMessages.push({ role, content: row.message_content });
       });
 
-      if (hasImage && mediaId) {
-        // Fetch and download Meta image
-        try {
-          const { buffer, mimeType, extension } = await media.downloadMetaMedia(mediaId, client.system_access_token);
-          imageUrl = await media.saveMedia(buffer, `upload.${extension}`, mimeType);
-          console.log(`Image saved. URL: ${imageUrl}`);
-
-          // Append vision payload for GPT-4o-mini
-          const base64Image = buffer.toString('base64');
+      if (hasImage && imageUrl) {
+        if (agent.vision_enabled && base64Image) {
+          // Vision is enabled, send image base64 context to LLM
           openAiMessages.push({
             role: 'user',
             content: [
-              { type: 'text', content: userTextContent },
+              { type: 'text', content: userTextContent || 'Analyze this image.' },
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${mimeType};base64,${base64Image}`
+                  url: `data:${imageMimeType};base64,${base64Image}`
                 }
               }
             ]
           });
-        } catch (mediaErr) {
-          console.error('Failed downloading and preparing vision prompt:', mediaErr);
-          await sendWhatsAppMessage(
-            recipientPhone,
-            "I received your image but was unable to process it. Please try again or send text. ⚠️",
-            client.system_access_token,
-            client.phone_number_id
-          );
-          return;
+        } else {
+          // Vision is disabled, only send text caption
+          openAiMessages.push({
+            role: 'user',
+            content: userTextContent || 'Image uploaded'
+          });
         }
       } else {
         // Standard text user query
@@ -1299,7 +1354,7 @@ app.post('/webhook', async (req, res) => {
         temperature: parseFloat(agent.temperature),
         openAiApiKey: process.env.OPENAI_API_KEY,
         groqApiKey: process.env.GROQ_API_KEY,
-        hasImage: hasImage
+        hasImage: hasImage && agent.vision_enabled
       });
 
       console.log(`LLM Response: "${botResponse}"`);
@@ -1329,7 +1384,7 @@ app.post('/webhook', async (req, res) => {
             temperature: parseFloat(agent.temperature),
             openAiApiKey: process.env.OPENAI_API_KEY,
             groqApiKey: process.env.GROQ_API_KEY,
-            hasImage: hasImage
+            hasImage: hasImage && agent.vision_enabled
           });
           console.log(`Final LLM Response (post-search): "${botResponse}"`);
         }
