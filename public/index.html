@@ -835,6 +835,8 @@
                   <option value="NONE">None</option>
                   <option value="TEXT">Text</option>
                   <option value="IMAGE">Image</option>
+                  <option value="VIDEO">Video</option>
+                  <option value="DOCUMENT">Document</option>
                 </select>
               </div>
               <div class="fg" id="tmpl-header-text-container" style="display:none;">
@@ -1449,46 +1451,108 @@
 
     function updatePreview() {
       if (!selectedTemplate) return;
-      const header = selectedTemplate.components?.find(c => c.type === 'HEADER')?.text || '';
+      const headerComp = selectedTemplate.components?.find(c => c.type === 'HEADER');
       const body = selectedTemplate.components?.find(c => c.type === 'BODY')?.text || '';
       const footer = selectedTemplate.components?.find(c => c.type === 'FOOTER')?.text || '';
-      // Substitute variable placeholders with sample values from inputs
+      
+      // Substitute body variables
       const varInputs = document.querySelectorAll('.var-input');
       let previewBody = body;
-      varInputs.forEach((inp, i) => {
-        previewBody = previewBody.replace(`{{${i+1}}}`, `<strong>${inp.value || `{{${i+1}}}`}</strong>`);
+      varInputs.forEach((inp) => {
+        const num = inp.getAttribute('data-var');
+        previewBody = previewBody.replace(`{{${num}}}`, `<strong>${inp.value || `{{${num}}}`}</strong>`);
       });
+
+      // Construct Header HTML based on format
+      let headerHtml = '';
+      if (headerComp) {
+        if (headerComp.format === 'TEXT') {
+          let headerText = headerComp.text || '';
+          const hdrInput = document.getElementById('camp-hdr-text-var');
+          if (hdrInput) {
+            headerText = headerText.replace('{{1}}', `<strong>${hdrInput.value || '{{1}}'}</strong>`);
+          }
+          headerHtml = `<div style="font-weight:800; margin-bottom:6px;">${headerText}</div>`;
+        } else if (headerComp.format === 'IMAGE') {
+          const mediaInput = document.getElementById('camp-hdr-media-url');
+          const imgUrl = mediaInput ? (mediaInput.value.trim() || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800') : 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800';
+          headerHtml = `<img src="${imgUrl}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-bottom: 8px;">`;
+        } else if (headerComp.format === 'VIDEO') {
+          headerHtml = `<div style="background:#000; color:#fff; text-align:center; padding:20px; border-radius:8px; font-size:12px; margin-bottom:8px;">📹 Video Header Preview</div>`;
+        } else if (headerComp.format === 'DOCUMENT') {
+          headerHtml = `<div style="background:#f1f5f9; border:1px solid #cbd5e1; padding:10px; border-radius:8px; font-size:11px; display:flex; align-items:center; gap:8px; margin-bottom:8px;">📄 Document Header (PDF)</div>`;
+        }
+      }
+
       const el = document.getElementById('preview-body');
       el.style.fontStyle = 'normal'; el.style.color = '#333';
       el.innerHTML =
-        (header ? `<div style="font-weight:800; margin-bottom:6px;">${header}</div>` : '') +
+        headerHtml +
         `<div>${previewBody}</div>` +
         (footer ? `<div style="font-size:11px; color:#777; margin-top:8px;">${footer}</div>` : '');
     }
 
     function buildVarFields(tpl) {
-      const body = tpl.components?.find(c => c.type === 'BODY')?.text || '';
-      const matches = [...body.matchAll(/\{\{(\d+)\}\}/g)];
       const vb = document.getElementById('var-builder');
       const vr = document.getElementById('var-rows');
       vr.innerHTML = '';
-      if (!matches.length) { vb.style.display = 'none'; return; }
-      vb.style.display = 'block';
-      // Deduplicate variable numbers
-      const seen = new Set();
-      matches.forEach(m => {
-        const num = m[1];
-        if (seen.has(num)) return; seen.add(num);
-        const row = document.createElement('div');
-        row.className = 'var-row';
-        row.innerHTML = `
-          <label>Variable {{${num}}}</label>
-          <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
-            class="var-input" data-var="${num}" placeholder="Value for {{${num}}}" oninput="updatePreview()">
-        `;
-        row.querySelector('input').classList.add('var-input');
-        vr.appendChild(row);
-      });
+      
+      let hasFields = false;
+
+      // 1. Check Header Component
+      const header = tpl.components?.find(c => c.type === 'HEADER');
+      if (header) {
+        if (header.format === 'TEXT' && header.text && header.text.includes('{{1}}')) {
+          hasFields = true;
+          const row = document.createElement('div');
+          row.className = 'var-row';
+          row.innerHTML = `
+            <label>Header Text Var</label>
+            <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
+              id="camp-hdr-text-var" placeholder="Value for header variable" oninput="updatePreview()">
+          `;
+          vr.appendChild(row);
+        } else if (header.format === 'IMAGE' || header.format === 'VIDEO' || header.format === 'DOCUMENT') {
+          hasFields = true;
+          const row = document.createElement('div');
+          row.className = 'var-row';
+          row.innerHTML = `
+            <label>Header ${header.format} URL</label>
+            <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
+              id="camp-hdr-media-url" data-format="${header.format}" placeholder="https://url.to/your-file" oninput="updatePreview()">
+          `;
+          vr.appendChild(row);
+        }
+      }
+
+      // 2. Check Body Component
+      const body = tpl.components?.find(c => c.type === 'BODY')?.text || '';
+      const matches = [...body.matchAll(/\{\{(\d+)\}\}/g)];
+      
+      if (matches.length > 0) {
+        hasFields = true;
+        // Deduplicate variable numbers
+        const seen = new Set();
+        matches.forEach(m => {
+          const num = m[1];
+          if (seen.has(num)) return; seen.add(num);
+          const row = document.createElement('div');
+          row.className = 'var-row';
+          row.innerHTML = `
+            <label>Body Variable {{${num}}}</label>
+            <input class="fg" style="margin:0; flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none;"
+              class="var-input" data-var="${num}" placeholder="Value for {{${num}}}" oninput="updatePreview()">
+          `;
+          row.querySelector('input').classList.add('var-input');
+          vr.appendChild(row);
+        });
+      }
+
+      if (hasFields) {
+        vb.style.display = 'block';
+      } else {
+        vb.style.display = 'none';
+      }
     }
 
     // ─── Leads Management ───
@@ -1632,11 +1696,52 @@
       btn.disabled = true; btn.textContent = '⏳ Sending…';
 
       // Build components from variable inputs
-      let comp = null;
+      const comp = [];
+
+      // 1. Header Parameters
+      const headerComp = selectedTemplate.components?.find(c => c.type === 'HEADER');
+      if (headerComp) {
+        if (headerComp.format === 'TEXT') {
+          const hdrInput = document.getElementById('camp-hdr-text-var');
+          if (hdrInput) {
+            comp.push({
+              type: 'header',
+              parameters: [
+                {
+                  type: 'text',
+                  text: hdrInput.value.trim() || ''
+                }
+              ]
+            });
+          }
+        } else if (headerComp.format === 'IMAGE' || headerComp.format === 'VIDEO' || headerComp.format === 'DOCUMENT') {
+          const mediaInput = document.getElementById('camp-hdr-media-url');
+          if (mediaInput) {
+            const mediaUrl = mediaInput.value.trim();
+            const formatLower = headerComp.format.toLowerCase();
+            comp.push({
+              type: 'header',
+              parameters: [
+                {
+                  type: formatLower,
+                  [formatLower]: {
+                    link: mediaUrl || ''
+                  }
+                }
+              ]
+            });
+          }
+        }
+      }
+
+      // 2. Body Parameters
       const varInputs = document.querySelectorAll('.var-input');
       if (varInputs.length > 0) {
-        const params = Array.from(varInputs).map(inp => ({ type: 'text', text: inp.value || '' }));
-        comp = [{ type: 'body', parameters: params }];
+        const sortedInputs = Array.from(varInputs).sort((a, b) => {
+          return parseInt(a.getAttribute('data-var')) - parseInt(b.getAttribute('data-var'));
+        });
+        const params = sortedInputs.map(inp => ({ type: 'text', text: inp.value || '' }));
+        comp.push({ type: 'body', parameters: params });
       }
 
       const recipients = leads.map(l => ({ name: l.name || '', phone: l.phone }));
@@ -2081,6 +2186,26 @@
           example: {
             header_handle: [
               "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800"
+            ]
+          }
+        });
+      } else if (headerType === 'VIDEO') {
+        components.push({
+          type: 'HEADER',
+          format: 'VIDEO',
+          example: {
+            header_handle: [
+              "https://www.w3schools.com/html/mov_bbb.mp4"
+            ]
+          }
+        });
+      } else if (headerType === 'DOCUMENT') {
+        components.push({
+          type: 'HEADER',
+          format: 'DOCUMENT',
+          example: {
+            header_handle: [
+              "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
             ]
           }
         });
