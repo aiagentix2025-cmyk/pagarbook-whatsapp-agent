@@ -259,6 +259,133 @@
         grid-template-columns: 1fr;
       }
     }
+
+    /* Media Library styles */
+    .media-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #f8faff;
+      position: relative;
+    }
+    .media-drop-zone:hover, .media-drop-zone.dragover {
+      border-color: var(--primary);
+      background: var(--primary-glow);
+    }
+    .media-drop-zone input[type=file] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .media-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #fff;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      position: relative;
+    }
+    .media-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.10);
+    }
+    .media-card-thumb {
+      width: 100%; height: 110px;
+      object-fit: cover;
+      background: #e2e8f0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .media-card-thumb img {
+      width: 100%; height: 110px; object-fit: cover;
+    }
+    .media-card-info {
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .media-card-name {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .media-card-type {
+      font-size: 10.5px;
+      color: var(--muted);
+    }
+    .media-card-actions {
+      display: flex;
+      gap: 5px;
+      margin-top: 4px;
+    }
+    .media-card-actions button {
+      flex: 1;
+      font-size: 10.5px;
+      padding: 5px 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .media-card-actions .copy-btn {
+      background: var(--primary-glow);
+      color: var(--primary);
+      border-color: rgba(99,102,241,0.2);
+    }
+    .media-card-actions .copy-btn:hover {
+      background: var(--primary);
+      color: #fff;
+    }
+    .media-card-actions .del-btn {
+      background: rgba(239,68,68,0.08);
+      color: var(--danger);
+      border-color: rgba(239,68,68,0.2);
+    }
+    .media-card-actions .del-btn:hover {
+      background: var(--danger);
+      color: #fff;
+    }
+    .media-card-badge {
+      position: absolute; top: 7px; right: 7px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 9.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+    .media-upload-progress {
+      height: 4px;
+      background: var(--primary-glow);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+    .media-upload-progress-bar {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s ease;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -304,6 +431,10 @@
       <div class="nav-item" id="nav-templates" onclick="go('templates')">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/></svg>
         Meta Templates
+      </div>
+      <div class="nav-item" id="nav-media" onclick="go('media')">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+        Media Library
       </div>
       <div class="nav-item" id="nav-contacts" onclick="go('contacts')">
         <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
@@ -961,6 +1092,57 @@
         </div>
       </div>
 
+      <!-- ─── TAB: MEDIA LIBRARY ─────────────────────────────────── -->
+      <div class="tab" id="tab-media">
+        <div class="card fade-in">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <h2>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"/></svg>
+              Media Library
+            </h2>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <select id="media-filter-type" onchange="filterMediaGallery()" style="padding:6px 12px; border-radius:8px; border:1px solid var(--border); font-family:inherit; font-size:13px; background:#f8faff; outline:none; color:var(--text);">
+                <option value="all">All Types</option>
+                <option value="image">Images</option>
+                <option value="video">Videos</option>
+                <option value="document">Documents</option>
+              </select>
+              <input id="media-search" placeholder="Search files…" oninput="filterMediaGallery()" style="padding:6px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; outline:none; background:#f8faff; min-width:160px;">
+              <button class="btn sec" onclick="loadMediaLibrary()" style="padding:6px 14px; font-size:13px;">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <!-- Upload Drop Zone -->
+          <div class="media-drop-zone" id="media-drop-zone">
+            <input type="file" id="media-lib-file-input" multiple accept="image/*,video/mp4,application/pdf,.pdf,.doc,.docx" onchange="handleMediaLibraryUpload(event)">
+            <div style="pointer-events:none; display:flex; flex-direction:column; align-items:center; gap:10px; color:var(--muted);">
+              <svg width="42" height="42" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.3" style="color:var(--primary); opacity:0.7;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+              <div>
+                <span style="font-weight:700; color:var(--text); font-size:14px;">Click or drag files here to upload</span>
+                <p style="font-size:12px; margin-top:4px;">Images (JPG, PNG, WEBP) · Videos (MP4) · Documents (PDF, DOC)</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Progress Bar -->
+          <div class="media-upload-progress" id="media-upload-progress">
+            <div class="media-upload-progress-bar" id="media-upload-progress-bar"></div>
+          </div>
+          <div id="media-upload-status" style="font-size:12px; color:var(--muted); margin-top:6px; min-height:16px;"></div>
+
+          <!-- Media Grid -->
+          <div class="media-grid" id="media-library-grid">
+            <div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted);">
+              <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2" style="opacity:0.3; margin-bottom:10px;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z"/></svg>
+              <p>No media uploaded yet.<br>Upload images, videos, or documents above to get a shareable URL.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ─── TAB: CONTACTS ─────────────────────────────────────── -->
       <div class="tab" id="tab-contacts">
         <div class="two-col-wide">
@@ -1141,6 +1323,7 @@
       documents:  'Knowledge Base',
       campaigns:  'Bulk Campaigns',
       templates:  'Meta Templates',
+      media:      'Media Library',
       contacts:   'CRM Address Book',
       chats:      'Chat History (Live Inbox)',
       sandbox:    'Vector KB Sandbox',
@@ -1160,6 +1343,7 @@
       if (id === 'clients') loadClients();
       if (id === 'campaigns') { loadCampaigns(); populateCrmTagsForCampaign(); }
       if (id === 'templates') loadTemplates();
+      if (id === 'media') { loadMediaLibrary(); initMediaDropZone(); }
       if (id === 'contacts') loadCrmContacts();
     }
 
@@ -2787,6 +2971,186 @@
         alert('Error: ' + err.message);
       }
       btn.disabled = false; btn.textContent = 'Create Template';
+    }
+
+    // ═══════════ MEDIA LIBRARY ══════
+    let allMediaFiles = [];
+
+    async function loadMediaLibrary() {
+      const grid = document.getElementById('media-library-grid');
+      grid.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:40px; color:var(--muted);">Loading...</div>';
+      try {
+        const r = await fetch('/api/media');
+        const data = await r.json();
+        allMediaFiles = data.files || [];
+        renderMediaGallery(allMediaFiles);
+      } catch (err) {
+        grid.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:30px; color:var(--danger);">Error loading media: ${err.message}</div>`;
+      }
+    }
+
+    function getMediaType(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return 'image';
+      if (['mp4','mov','avi','webm'].includes(ext)) return 'video';
+      return 'document';
+    }
+
+    function renderMediaGallery(files) {
+      const grid = document.getElementById('media-library-grid');
+      if (!files || files.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1; text-align:center; padding:50px 20px; color:var(--muted);">
+            <svg width="56" height="56" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2" style="opacity:0.25; margin-bottom:12px; display:block; margin-left:auto; margin-right:auto;"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z"/></svg>
+            <p style="font-size:14px; font-weight:600; margin-bottom:6px;">No media files yet</p>
+            <p style="font-size:12px;">Upload images, videos, or documents above to get a shareable public URL.</p>
+          </div>`;
+        return;
+      }
+      grid.innerHTML = '';
+      files.forEach(file => {
+        const mediaType = getMediaType(file.name);
+        const card = document.createElement('div');
+        card.className = 'media-card';
+        card.dataset.name = file.name.toLowerCase();
+        card.dataset.type = mediaType;
+
+        let thumbHtml = '';
+        if (mediaType === 'image') {
+          thumbHtml = `<div class="media-card-thumb"><img src="${file.url}" alt="${file.name}" loading="lazy"></div>`;
+        } else if (mediaType === 'video') {
+          thumbHtml = `<div class="media-card-thumb" style="background:#1e1f2e;display:flex;align-items:center;justify-content:center;"><svg width="34" height="34" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" style="color:#6366f1;opacity:0.8;"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 2.25v9a2.25 2.25 0 002.25 2.25z"/></svg></div>`;
+        } else {
+          const ext = file.name.split('.').pop().toUpperCase();
+          const colors = { PDF: '#ef4444', DOC: '#3b82f6', DOCX: '#3b82f6', XLS: '#10b981', XLSX: '#10b981' };
+          const color = colors[ext] || '#6366f1';
+          thumbHtml = `<div class="media-card-thumb" style="background:#f1f5f9;display:flex;align-items:center;justify-content:center;"><div style="width:44px;height:56px;background:${color};border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:11px;">${ext}</div></div>`;
+        }
+
+        const badgeColors = { image: '#10b981', video: '#6366f1', document: '#f59e0b' };
+        const shortName = file.name.replace(/^\d+_/, '');
+        const encodedUrl = file.url.replace(/'/g, "\\'");
+        const encodedName = file.name.replace(/'/g, "\\'");
+        const displayName = shortName.replace(/'/g, "\\'");
+
+        card.innerHTML = `
+          ${thumbHtml}
+          <span class="media-card-badge" style="background:${badgeColors[mediaType] || '#6b7280'}">${mediaType}</span>
+          <div class="media-card-info">
+            <div class="media-card-name" title="${displayName}">${shortName}</div>
+            <div class="media-card-type">${file.size || ''}</div>
+            <div class="media-card-actions">
+              <button class="copy-btn" onclick="copyMediaUrl('${encodedUrl}', this)">📋 Copy URL</button>
+              <button class="del-btn" onclick="deleteMediaFile('${encodedName}')">Delete</button>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function filterMediaGallery() {
+      const typeFilter = document.getElementById('media-filter-type').value;
+      const searchTerm = document.getElementById('media-search').value.toLowerCase().trim();
+      let filtered = allMediaFiles;
+      if (typeFilter !== 'all') {
+        filtered = filtered.filter(f => getMediaType(f.name) === typeFilter);
+      }
+      if (searchTerm) {
+        filtered = filtered.filter(f => f.name.toLowerCase().includes(searchTerm));
+      }
+      renderMediaGallery(filtered);
+    }
+
+    async function copyMediaUrl(url, btn) {
+      try {
+        await navigator.clipboard.writeText(url);
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.style.background = '#10b981';
+        btn.style.color = '#fff';
+        setTimeout(() => { btn.textContent = orig; btn.style.background = ''; btn.style.color = ''; }, 2000);
+      } catch (err) {
+        prompt('Copy this URL:', url);
+      }
+    }
+
+    async function deleteMediaFile(filename) {
+      const shortName = filename.replace(/^\d+_/, '');
+      if (!confirm('Delete "' + shortName + '"? This cannot be undone.')) return;
+      try {
+        const r = await fetch('/api/media/' + encodeURIComponent(filename), { method: 'DELETE' });
+        if (r.ok) {
+          loadMediaLibrary();
+        } else {
+          const d = await r.json();
+          alert('Delete failed: ' + (d.error || 'Unknown'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    async function handleMediaLibraryUpload(event) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
+      const progressDiv = document.getElementById('media-upload-progress');
+      const progressBar = document.getElementById('media-upload-progress-bar');
+      const statusDiv = document.getElementById('media-upload-status');
+      progressDiv.style.display = 'block';
+      progressBar.style.width = '0%';
+      statusDiv.style.color = 'var(--muted)';
+      statusDiv.textContent = 'Uploading ' + files.length + ' file(s)...';
+      let completed = 0;
+      const errors = [];
+      for (const file of files) {
+        try {
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          statusDiv.textContent = 'Uploading ' + file.name + '...';
+          const r = await fetch('/api/media/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ file_name: file.name, file_data: base64, client_id: clientId || 'global' })
+          });
+          const data = await r.json();
+          if (!r.ok) errors.push(file.name + ': ' + (data.error || 'Failed'));
+          completed++;
+          progressBar.style.width = Math.round((completed / files.length) * 100) + '%';
+        } catch (err) {
+          errors.push(file.name + ': ' + err.message);
+          completed++;
+        }
+      }
+      if (event.target && event.target.value !== undefined) event.target.value = '';
+      setTimeout(() => { progressDiv.style.display = 'none'; progressBar.style.width = '0%'; }, 1200);
+      if (errors.length > 0) {
+        statusDiv.textContent = 'Upload errors: ' + errors.join(', ');
+        statusDiv.style.color = 'var(--danger)';
+      } else {
+        statusDiv.textContent = completed + ' file(s) uploaded!';
+        statusDiv.style.color = 'var(--success)';
+        setTimeout(() => { statusDiv.textContent = ''; statusDiv.style.color = 'var(--muted)'; }, 4000);
+      }
+      loadMediaLibrary();
+    }
+
+    function initMediaDropZone() {
+      const zone = document.getElementById('media-drop-zone');
+      if (!zone) return;
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        if (e.dataTransfer.files.length > 0) {
+          handleMediaLibraryUpload({ target: { files: e.dataTransfer.files } });
+        }
+      });
     }
 
     // ═══════════ CRM CONTACTS ══════

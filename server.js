@@ -705,11 +705,59 @@ app.post('/api/sessions/:id/pause', async (req, res) => {
   }
 });
 
+// GET: List all uploaded media files
+app.get('/api/media', (req, res) => {
+  try {
+    const uploadDir = path.join(__dirname, 'public', 'media');
+    if (!fs.existsSync(uploadDir)) {
+      return res.json({ files: [] });
+    }
+    const filenames = fs.readdirSync(uploadDir).filter(f => !f.startsWith('.'));
+    const host = req.get('host');
+    const protocol = req.protocol;
+    const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+    const files = filenames.map(name => {
+      const filepath = path.join(uploadDir, name);
+      const stats = fs.statSync(filepath);
+      const sizeKB = Math.round(stats.size / 1024);
+      const sizeStr = sizeKB >= 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
+      return {
+        name,
+        url: `${baseUrl}/media/${name}`,
+        size: sizeStr,
+        created: stats.birthtime
+      };
+    });
+    // Sort newest first
+    files.sort((a, b) => new Date(b.created) - new Date(a.created));
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE: Remove a media file
+app.delete('/api/media/:filename', (req, res) => {
+  try {
+    const filename = req.params.filename;
+    // Security: prevent path traversal
+    const safeFilename = path.basename(filename);
+    const filepath = path.join(__dirname, 'public', 'media', safeFilename);
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'File not found.' });
+    }
+    fs.unlinkSync(filepath);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST: Direct Media Upload without RAG vectorization (specifically for live operators sending files)
 app.post('/api/media/upload', async (req, res) => {
   const { client_id, file_name, file_data } = req.body;
-  if (!client_id || !file_name || !file_data) {
-    return res.status(400).json({ error: 'client_id, file_name, and file_data (base64) are required.' });
+  if (!file_name || !file_data) {
+    return res.status(400).json({ error: 'file_name and file_data (base64) are required.' });
   }
   try {
     const uploadDir = path.join(__dirname, 'public', 'media');
