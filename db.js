@@ -174,6 +174,14 @@ async function runTenantMigrations(dbName) {
       );
     `);
 
+    // Add lead_category and human_intervened_at columns to chat_sessions table if they do not exist
+    await client.query(`
+      ALTER TABLE public.chat_sessions ADD COLUMN IF NOT EXISTS lead_category VARCHAR(20) DEFAULT 'cold';
+    `);
+    await client.query(`
+      ALTER TABLE public.chat_sessions ADD COLUMN IF NOT EXISTS human_intervened_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+    `);
+
     // 7. Create Chat History table
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.chat_messages (

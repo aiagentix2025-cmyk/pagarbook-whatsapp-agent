@@ -398,6 +398,11 @@ app.get('/api/stats', async (req, res) => {
     const pausedChats = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE session_status = 'paused'");
     const totalCampaigns = await tenantPool.query('SELECT count(*) FROM public.campaigns');
 
+    const hotLeads = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE lead_category = 'hot'");
+    const warmLeads = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE lead_category = 'warm'");
+    const coldLeads = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE lead_category = 'cold'");
+    const humanInterventions = await tenantPool.query("SELECT count(*) FROM public.chat_sessions WHERE human_intervened_at IS NOT NULL");
+
     // Campaign Logs delivery stats
     const logStats = await tenantPool.query(`
       SELECT 
@@ -421,6 +426,10 @@ app.get('/api/stats', async (req, res) => {
       activeChats: parseInt(activeChats.rows[0].count),
       pausedChats: parseInt(pausedChats.rows[0].count),
       totalCampaigns: parseInt(totalCampaigns.rows[0].count),
+      hotLeads: parseInt(hotLeads.rows[0].count),
+      warmLeads: parseInt(warmLeads.rows[0].count),
+      coldLeads: parseInt(coldLeads.rows[0].count),
+      humanInterventions: parseInt(humanInterventions.rows[0].count),
       deliveryRate: deliveryRate + '%',
       uptime: uptimeStr
     });
@@ -431,7 +440,7 @@ app.get('/api/stats', async (req, res) => {
 
 // GET Client Sessions
 app.get('/api/sessions', async (req, res) => {
-  const { client_id } = req.query;
+  const { client_id, filter } = req.query;
   if (!client_id) return res.status(400).json({ error: 'client_id parameter is required' });
 
   try {
@@ -442,12 +451,20 @@ app.get('/api/sessions', async (req, res) => {
     if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found' });
     const dbName = clientRes.rows[0].db_name;
     const tenantPool = db.getTenantPool(dbName);
+    
+    let filterClause = '';
+    if (filter === 'hot') filterClause = "WHERE s.lead_category = 'hot'";
+    else if (filter === 'warm') filterClause = "WHERE s.lead_category = 'warm'";
+    else if (filter === 'cold') filterClause = "WHERE s.lead_category = 'cold'";
+    else if (filter === 'human') filterClause = "WHERE s.human_intervened_at IS NOT NULL";
 
     const result = await tenantPool.query(`
-      SELECT s.id as session_id, s.customer_phone, s.session_status, s.last_interaction, count(m.id) as msg_count
+      SELECT s.id as session_id, s.customer_phone, c.name as customer_name, s.session_status, s.lead_category, s.human_intervened_at, s.last_interaction, count(m.id) as msg_count
       FROM public.chat_sessions s
+      LEFT JOIN public.contacts c ON c.phone = s.customer_phone
       LEFT JOIN public.chat_messages m ON m.session_id = s.id
-      GROUP BY s.id
+      ${filterClause}
+      GROUP BY s.id, c.name
       ORDER BY s.last_interaction DESC
     `);
     res.json(result.rows);
@@ -477,15 +494,43 @@ app.get('/api/sessions/:id', async (req, res) => {
     );
     
     // Map to frontend compatibility format
-    const formatted = result.rows.map(row => ({
+    res.json(result.rows.map(row => ({
       id: row.id,
-      message: {
-        type: row.sender_type === 'human' ? 'human' : 'ai',
-        content: row.message_content,
-        media_url: row.media_url
-      }
-    }));
-    res.json(formatted);
+      type: row.sender_type === 'human' ? 'human' : 'ai',
+      message_type: row.message_type,
+      content: row.message_content,
+      media_url: row.media_url,
+      timestamp: row.created_at
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST: Summarize Chat Session
+app.post('/api/chats/summarize', async (req, res) => {
+  const { client_id, sessionId } = req.body;
+  if (!client_id || !sessionId) return res.status(400).json({ error: 'client_id and sessionId required' });
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+    
+    // Fetch last 50 messages
+    const msgRes = await tenantPool.query(
+      'SELECT sender_type, message_content FROM public.chat_messages WHERE session_id = $1 ORDER BY id ASC LIMIT 50',
+      [sessionId]
+    );
+    if (msgRes.rows.length === 0) return res.json({ summary: "No conversation history found." });
+    
+    const transcript = msgRes.rows.map(r => `${r.sender_type === 'human' ? 'Customer' : 'Bot'}: ${r.message_content}`).join('\n');
+    const prompt = [{ role: 'system', content: 'You are an assistant that summarizes conversations for human operators. Please summarize the following conversation into exactly 3 concise bullet points focusing on customer intent, unresolved issues, and what the human operator needs to do next:\n\n' + transcript }];
+    
+    const llm = require('./llm');
+    const summary = await llm.getChatCompletion({ messages: prompt, model: 'gpt-4o-mini', temperature: 0.2 });
+    res.json({ success: true, summary });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -646,7 +691,7 @@ app.post('/api/sessions/:id/reply', async (req, res) => {
 
     // Update session status to paused (takeover) and update activity
     await tenantPool.query(
-      "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+      "UPDATE public.chat_sessions SET session_status = 'paused', human_intervened_at = CURRENT_TIMESTAMP, last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
       [sessionId]
     );
 
@@ -1043,6 +1088,26 @@ app.post('/api/contacts/bulk', async (req, res) => {
   }
 });
 
+// DELETE: Clear all CRM contacts
+app.delete('/api/contacts/all', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id parameter is required.' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
+    const tenantPool = db.getTenantPool(clientRes.rows[0].db_name);
+
+    await tenantPool.query('DELETE FROM public.contacts');
+    res.json({ success: true, message: 'All contacts deleted successfully.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // DELETE: Delete a CRM contact
 app.delete('/api/contacts/:id', async (req, res) => {
   const { client_id } = req.query;
@@ -1265,11 +1330,27 @@ app.post('/webhook', async (req, res) => {
             "UPDATE public.chat_sessions SET session_status = 'inactive' WHERE id = $1",
             [session.id]
           );
-          session.session_status = 'inactive';
+      session.session_status = 'inactive';
         }
       }
 
       // D. Message Content Parsing (Text vs Image vs Interactive Buttons)
+      // Keyword Handoff Check (Talk to Human)
+      if (userTextContent && userTextContent.toLowerCase().match(/(talk to human|talk to an agent|support|customer service|need a person)/i)) {
+        await tenantPool.query(
+          "UPDATE public.chat_sessions SET session_status = 'paused', human_intervened_at = CURRENT_TIMESTAMP WHERE id = $1",
+          [session.id]
+        );
+        const handoffMsg = "I've paused the automated assistant and notified our human team. Someone will be with you shortly!";
+        await sendWhatsAppMessage(recipientPhone, handoffMsg, client.system_access_token, client.phone_number_id);
+        
+        await tenantPool.query(
+          `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) VALUES ($1, 'ai', 'text', $2)`,
+          [session.id, handoffMsg]
+        );
+        return; // Halt AI pipeline
+      }
+
       let userTextContent = '';
       let mediaId = null;
       let hasImage = false;
@@ -1479,6 +1560,7 @@ app.post('/webhook', async (req, res) => {
         `Today's date in IST is ${todayDateIST}, and today's weekday is ${todayWeekdayIST}.\n\n` +
         `Official Knowledge Base Context:\n${kbContext}\n\n` +
         `Web Search Tool: If you need real-time facts or current information that is not available in the Knowledge Base context, respond ONLY with "[SEARCH: query]". Replace "query" with a concise search query. The system will automatically execute this search, retrieve the results, and present them to you, after which you will provide your final answer to the user.\n\n` +
+        `Lead Categorization Instruction: You MUST evaluate the customer's intent based on the conversation and append EXACTLY ONE of the following tags to the very end of your response: [LEAD:HOT] if their demo is booked or they are ready to buy; [LEAD:WARM] if they are interested or asking questions; [LEAD:COLD] if it is an initial conversation, they did not respond back, are not interested, or just browsing.\n\n` +
         agent.system_prompt;
 
       // Construct LLM Message Array
@@ -1566,6 +1648,20 @@ app.post('/webhook', async (req, res) => {
           });
           console.log(`Final LLM Response (post-search): "${botResponse}"`);
         }
+      }
+
+      // Extract and strip Lead tag from AI response
+      let detectedLeadCategory = null;
+      const leadMatch = botResponse.match(/\[LEAD:(HOT|WARM|COLD)\]/i);
+      if (leadMatch) {
+        detectedLeadCategory = leadMatch[1].toLowerCase();
+        botResponse = botResponse.replace(/\[LEAD:(HOT|WARM|COLD)\]/gi, '').trim();
+        
+        // Update session's lead category
+        await tenantPool.query(
+          "UPDATE public.chat_sessions SET lead_category = $1 WHERE id = $2",
+          [detectedLeadCategory, session.id]
+        );
       }
 
       // J. Save AI response in chat log history
