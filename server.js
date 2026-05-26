@@ -737,6 +737,76 @@ app.post('/api/media/upload', async (req, res) => {
   }
 });
 
+// Helper: Upload media to Meta Resumable Upload API and return file handle (h)
+async function getMetaHeaderHandle(appId, accessToken, fileUrlOrPath) {
+  let buffer;
+  let filename = 'sample_file';
+  let mimeType = 'image/jpeg';
+
+  if (fileUrlOrPath.startsWith('http://') || fileUrlOrPath.startsWith('https://')) {
+    const res = await fetch(fileUrlOrPath);
+    if (!res.ok) throw new Error(`Failed to fetch media file from URL: ${fileUrlOrPath}`);
+    const arrayBuffer = await res.arrayBuffer();
+    buffer = Buffer.from(arrayBuffer);
+    const contentType = res.headers.get('content-type');
+    if (contentType) mimeType = contentType;
+    const urlParts = fileUrlOrPath.split('/');
+    filename = urlParts[urlParts.length - 1] || 'sample_file';
+  } else {
+    // Treat as relative file path under public/ directory
+    const relativePath = fileUrlOrPath.startsWith('/') ? fileUrlOrPath.slice(1) : fileUrlOrPath;
+    const localPath = path.join(__dirname, 'public', relativePath);
+    if (fs.existsSync(localPath)) {
+      buffer = fs.readFileSync(localPath);
+      filename = path.basename(localPath);
+      const ext = path.extname(filename).toLowerCase();
+      if (ext === '.png') mimeType = 'image/png';
+      else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+      else if (ext === '.mp4') mimeType = 'video/mp4';
+      else if (ext === '.pdf') mimeType = 'application/pdf';
+    } else {
+      throw new Error(`File path not found: ${localPath}`);
+    }
+  }
+
+  const fileLength = buffer.length;
+
+  // 1. Initialize Resumable Upload Session
+  const initUrl = `https://graph.facebook.com/v18.0/${appId}/uploads?file_name=${encodeURIComponent(filename)}&file_length=${fileLength}&file_type=${encodeURIComponent(mimeType)}`;
+  const initRes = await fetch(initUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  });
+
+  const initData = await initRes.json();
+  if (!initRes.ok) {
+    throw new Error(`Meta Resumable Upload Init Error: ${initData.error?.message || JSON.stringify(initData)}`);
+  }
+
+  const sessionId = initData.id;
+
+  // 2. Upload binary data
+  const uploadUrl = `https://graph.facebook.com/v18.0/${sessionId}`;
+  const uploadRes = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'file_offset': '0',
+      'Content-Type': 'application/octet-stream'
+    },
+    body: buffer
+  });
+
+  const uploadData = await uploadRes.json();
+  if (!uploadRes.ok) {
+    throw new Error(`Meta Resumable Upload Data Error: ${uploadData.error?.message || JSON.stringify(uploadData)}`);
+  }
+
+  return uploadData.h;
+}
+
 // POST: Submit a new template to Meta
 app.post('/api/templates', async (req, res) => {
   const { client_id, name, category, language, components } = req.body;
@@ -747,13 +817,34 @@ app.post('/api/templates', async (req, res) => {
   try {
     const centralClient = await db.getCentralClient();
     const clientRes = await centralClient.query(
-      'SELECT whatsapp_business_id, system_access_token FROM public.clients WHERE id = $1',
+      'SELECT whatsapp_business_id, system_access_token, app_id FROM public.clients WHERE id = $1',
       [client_id]
     );
     centralClient.release();
 
     if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found.' });
-    const { whatsapp_business_id, system_access_token } = clientRes.rows[0];
+    const { whatsapp_business_id, system_access_token, app_id } = clientRes.rows[0];
+
+    // Intercept media headers to upload to Meta and get the handle
+    for (let comp of components) {
+      if (comp.type === 'HEADER' && ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(comp.format)) {
+        const mediaUrlOrPath = comp.example?.header_handle?.[0];
+        if (mediaUrlOrPath && mediaUrlOrPath !== 'placeholder') {
+          if (!app_id) {
+            return res.status(400).json({ error: 'Meta App ID is missing for this client. Please configure App ID in Client settings to create media templates.' });
+          }
+          console.log(`[Templates] Uploading template header media to Meta: ${mediaUrlOrPath}`);
+          try {
+            const handle = await getMetaHeaderHandle(app_id, system_access_token, mediaUrlOrPath);
+            console.log(`[Templates] Obtained Meta handle: ${handle}`);
+            comp.example.header_handle = [ handle ];
+          } catch (uploadErr) {
+            console.error(`[Templates] Meta media upload failed:`, uploadErr);
+            return res.status(400).json({ error: `Failed to upload media sample to Meta: ${uploadErr.message}` });
+          }
+        }
+      }
+    }
 
     const url = `https://graph.facebook.com/v18.0/${whatsapp_business_id}/message_templates`;
     const response = await fetch(url, {

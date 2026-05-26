@@ -241,6 +241,24 @@
 
     @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
     .fade-in { animation: fadeIn 0.25s ease; }
+
+    /* Templates 3-column layout and WhatsApp Preview styles */
+    .templates-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 1.1fr 0.9fr;
+      gap: 20px;
+      align-items: start;
+    }
+    @media (max-width: 1280px) {
+      .templates-layout {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media (max-width: 900px) {
+      .templates-layout {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -777,7 +795,7 @@
 
       <!-- ─── TAB: TEMPLATES ────────────────────────────────────── -->
       <div class="tab" id="tab-templates">
-        <div class="two-col-wide">
+        <div class="templates-layout">
           <!-- Templates List -->
           <div class="card fade-in">
             <h2>
@@ -843,11 +861,45 @@
                 <label>Header Text</label>
                 <input id="tmpl-header" placeholder="e.g. Welcome to Pagarbook!">
               </div>
+              
+              <!-- Media File / URL Input (For IMAGE, VIDEO, DOCUMENT headers) -->
+              <div class="fg" id="tmpl-header-media-container" style="display:none;">
+                <label id="tmpl-media-label">Header Media Sample</label>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                  <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn sec tmpl-media-btn-active" id="tmpl-media-src-upload" onclick="setTmplMediaSource('upload')" style="flex:1; padding:6px 12px; font-size:12px; background:var(--primary); color:#fff;">Upload File</button>
+                    <button type="button" class="btn sec" id="tmpl-media-src-url" onclick="setTmplMediaSource('url')" style="flex:1; padding:6px 12px; font-size:12px; background:none; color:var(--text);">Enter URL</button>
+                  </div>
+                  
+                  <div id="tmpl-media-upload-wrapper" style="display:flex; align-items:center; gap:8px;">
+                    <input type="file" id="tmpl-media-file-input" onchange="handleTmplMediaUpload(event)" style="display:none;">
+                    <button type="button" class="btn sec" onclick="document.getElementById('tmpl-media-file-input').click()" style="flex:1; padding:8px 12px; font-size:13px;">
+                      Choose File
+                    </button>
+                    <span id="tmpl-media-file-name" style="font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px;">No file chosen</span>
+                  </div>
+                  
+                  <div id="tmpl-media-url-wrapper" style="display:none;">
+                    <input id="tmpl-media-url-input" placeholder="Enter public media URL (e.g. https://...)" style="width:100%;" oninput="updateLivePreview()">
+                  </div>
+                  
+                  <div id="tmpl-media-upload-status" style="font-size:11px; color:var(--muted); display:none;"></div>
+                  <input type="hidden" id="tmpl-media-url-resolved">
+                </div>
+              </div>
+              
               <div class="fg">
                 <label>Body Content (Required)</label>
                 <textarea id="tmpl-body" placeholder="e.g. Hello {{1}}, your salary report for {{2}} is ready to view!" required></textarea>
                 <span style="font-size:11px; color:var(--muted); margin-top:4px;">Use <code>{{1}}</code>, <code>{{2}}</code>, etc. as variables for dynamic campaigns.</span>
               </div>
+              
+              <!-- Variable Sample Values (Required by Meta when variables are used) -->
+              <div class="fg" id="tmpl-variables-wrapper" style="display:none; margin-top: 10px;">
+                <label>Variable Sample Values (Required by Meta)</label>
+                <div id="tmpl-variables-samples-container" style="display:flex; flex-direction:column; gap:8px;"></div>
+              </div>
+              
               <div class="fg">
                 <label>Footer Text (Optional)</label>
                 <input id="tmpl-footer" placeholder="e.g. Reply STOP to unsubscribe">
@@ -865,6 +917,45 @@
 
               <button type="submit" class="btn" id="tmpl-create-btn" style="width:100%; margin-top:10px;">Create Template</button>
             </form>
+          </div>
+
+          <!-- Live Preview -->
+          <div class="card fade-in" id="tmpl-preview-card" style="position: sticky; top: 20px;">
+            <h2>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+              Live WhatsApp Preview
+            </h2>
+            <div style="background: #efeae2; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 10px; min-height: 300px; justify-content: center; align-items: center; border: 1px solid var(--border); box-shadow: inset 0 2px 8px rgba(0,0,0,0.05); position: relative;">
+              <!-- WhatsApp Message Bubble -->
+              <div style="background: #ffffff; border-radius: 8px; max-width: 280px; width: 100%; box-shadow: 0 1.5px 2px rgba(0,0,0,0.15); display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 4px;">
+                <!-- Media Area -->
+                <div id="wa-preview-media" style="display: none; width: 100%; border-radius: 6px 6px 0 0; overflow: hidden; margin-bottom: 4px;">
+                </div>
+                
+                <!-- Text Header Area -->
+                <div id="wa-preview-header-text" style="display: none; padding: 6px 10px 0 10px; font-weight: 700; font-size: 13.5px; color: #111; line-height: 1.3;">
+                </div>
+                
+                <!-- Body Text Area -->
+                <div id="wa-preview-body" style="padding: 6px 10px 4px 10px; font-size: 13px; color: #303030; line-height: 1.4; white-space: pre-wrap; word-break: break-word;">
+                  Body content goes here
+                </div>
+                
+                <!-- Footer Text Area -->
+                <div id="wa-preview-footer" style="padding: 0 10px 6px 10px; font-size: 11px; color: rgba(0,0,0,0.45); display: none;">
+                </div>
+                
+                <!-- Time & Status -->
+                <div style="align-self: flex-end; padding: 0 10px 4px 10px; font-size: 10px; color: rgba(0,0,0,0.4); display: flex; align-items: center; gap: 3px; margin-top: -4px;">
+                  <span>12:00 PM</span>
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="color: #53bdeb;"><path d="M12.25 4.25L6.25 10.25L3.25 7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.25 4.25L6.25 7.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+              
+              <!-- Buttons -->
+              <div id="wa-preview-buttons" style="display: flex; flex-direction: column; gap: 4px; width: 280px; margin-top: -6px;">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2147,14 +2238,262 @@
       }
     }
 
+    let tmplMediaSourceMode = 'upload';
+
+    function setTmplMediaSource(mode) {
+      tmplMediaSourceMode = mode;
+      const btnUpload = document.getElementById('tmpl-media-src-upload');
+      const btnUrl = document.getElementById('tmpl-media-src-url');
+      const wrapperUpload = document.getElementById('tmpl-media-upload-wrapper');
+      const wrapperUrl = document.getElementById('tmpl-media-url-wrapper');
+      
+      if (mode === 'upload') {
+        btnUpload.style.background = 'var(--primary)';
+        btnUpload.style.color = '#fff';
+        btnUrl.style.background = 'none';
+        btnUrl.style.color = 'var(--text)';
+        wrapperUpload.style.display = 'flex';
+        wrapperUrl.style.display = 'none';
+      } else {
+        btnUrl.style.background = 'var(--primary)';
+        btnUrl.style.color = '#fff';
+        btnUpload.style.background = 'none';
+        btnUpload.style.color = 'var(--text)';
+        wrapperUpload.style.display = 'none';
+        wrapperUrl.style.display = 'block';
+      }
+      updateLivePreview();
+    }
+
+    async function handleTmplMediaUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!clientId) {
+        alert('Please select a client from the top dropdown first.');
+        e.target.value = '';
+        return;
+      }
+      
+      document.getElementById('tmpl-media-file-name').textContent = file.name;
+      const statusDiv = document.getElementById('tmpl-media-upload-status');
+      statusDiv.style.display = 'block';
+      statusDiv.textContent = 'Uploading media to server...';
+      
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const base64Data = reader.result.split(',')[1];
+        try {
+          const response = await fetch('/api/media/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: clientId,
+              file_name: file.name,
+              file_data: base64Data
+            })
+          });
+          const data = await response.json();
+          if (response.ok && data.file_url) {
+            statusDiv.textContent = 'Upload complete!';
+            document.getElementById('tmpl-media-url-resolved').value = data.file_url;
+            updateLivePreview();
+          } else {
+            statusDiv.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+          }
+        } catch (err) {
+          statusDiv.textContent = 'Upload error: ' + err.message;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    let currentVariables = { header: [], body: [] };
+
+    function updateVariableInputs() {
+      const headerType = document.getElementById('tmpl-header-type').value;
+      const headerText = document.getElementById('tmpl-header').value;
+      const bodyText = document.getElementById('tmpl-body').value;
+      
+      const headerVars = headerType === 'TEXT' ? (headerText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, '')) : [];
+      const bodyVars = (bodyText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
+      
+      const uniqueHeaderVars = [...new Set(headerVars)].sort((a, b) => a - b);
+      const uniqueBodyVars = [...new Set(bodyVars)].sort((a, b) => a - b);
+      
+      const headerChanged = JSON.stringify(uniqueHeaderVars) !== JSON.stringify(currentVariables.header);
+      const bodyChanged = JSON.stringify(uniqueBodyVars) !== JSON.stringify(currentVariables.body);
+      
+      if (!headerChanged && !bodyChanged) {
+        return;
+      }
+      
+      const savedVals = {};
+      document.querySelectorAll('.tmpl-var-input').forEach(inp => {
+        savedVals[inp.id] = inp.value;
+      });
+      
+      currentVariables.header = uniqueHeaderVars;
+      currentVariables.body = uniqueBodyVars;
+      
+      const container = document.getElementById('tmpl-variables-samples-container');
+      container.innerHTML = '';
+      
+      if (uniqueHeaderVars.length === 0 && uniqueBodyVars.length === 0) {
+        document.getElementById('tmpl-variables-wrapper').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('tmpl-variables-wrapper').style.display = 'block';
+      
+      uniqueHeaderVars.forEach(v => {
+        const id = `tmpl-var-header-${v}`;
+        const val = savedVals[id] || '';
+        const fg = document.createElement('div');
+        fg.style = 'display:flex; flex-direction:column; gap:4px;';
+        fg.innerHTML = `
+          <span style="font-size:11.5px; font-weight:600;">Header Variable {{${v}}} Sample Value:</span>
+          <input class="tmpl-var-input" id="${id}" data-type="header" data-var="${v}" placeholder="e.g. John" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
+        `;
+        container.appendChild(fg);
+        fg.querySelector('input').addEventListener('input', updateLivePreview);
+      });
+      
+      uniqueBodyVars.forEach(v => {
+        const id = `tmpl-var-body-${v}`;
+        const val = savedVals[id] || '';
+        const fg = document.createElement('div');
+        fg.style = 'display:flex; flex-direction:column; gap:4px;';
+        fg.innerHTML = `
+          <span style="font-size:11.5px; font-weight:600;">Body Variable {{${v}}} Sample Value:</span>
+          <input class="tmpl-var-input" id="${id}" data-type="body" data-var="${v}" placeholder="e.g. $100 or January" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
+        `;
+        container.appendChild(fg);
+        fg.querySelector('input').addEventListener('input', updateLivePreview);
+      });
+    }
+
+    function updateLivePreview() {
+      const headerType = document.getElementById('tmpl-header-type').value;
+      const headerText = document.getElementById('tmpl-header').value;
+      const bodyText = document.getElementById('tmpl-body').value || 'Body content goes here';
+      const footerText = document.getElementById('tmpl-footer').value;
+      const mediaUrl = document.getElementById('tmpl-media-url-resolved').value || (tmplMediaSourceMode === 'url' ? document.getElementById('tmpl-media-url-input').value.trim() : '');
+      
+      const waMedia = document.getElementById('wa-preview-media');
+      waMedia.innerHTML = '';
+      waMedia.style.display = 'none';
+      
+      if (headerType === 'IMAGE') {
+        waMedia.style.display = 'block';
+        if (mediaUrl) {
+          waMedia.innerHTML = `<img src="${mediaUrl}" style="width: 100%; height: 140px; object-fit: cover;">`;
+        } else {
+          waMedia.innerHTML = `
+            <div style="width: 100%; height: 140px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; gap: 8px;">
+              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375 0 11-.75 0 .375 0 01.75 0z"/></svg>
+              <span>Choose a file or enter URL</span>
+            </div>
+          `;
+        }
+      } else if (headerType === 'VIDEO') {
+        waMedia.style.display = 'block';
+        if (mediaUrl) {
+          waMedia.innerHTML = `<video src="${mediaUrl}" style="width: 100%; height: 140px; object-fit: cover;" controls></video>`;
+        } else {
+          waMedia.innerHTML = `
+            <div style="width: 100%; height: 140px; background: #e2e8f0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; gap: 8px;">
+              <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+              <span>Choose a file or enter URL</span>
+            </div>
+          `;
+        }
+      } else if (headerType === 'DOCUMENT') {
+        waMedia.style.display = 'block';
+        waMedia.innerHTML = `
+          <div style="width: 100%; height: 80px; background: #f1f5f9; display: flex; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0; gap: 10px;">
+            <div style="width: 32px; height: 42px; background: #ef4444; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 10px;">
+              PDF
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; justify-content:center; overflow:hidden;">
+              <span style="font-size: 12px; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                ${mediaUrl ? mediaUrl.split('/').pop() : 'Sample_Document.pdf'}
+              </span>
+              <span style="font-size: 10px; color: var(--muted);">PDF Document</span>
+            </div>
+          </div>
+        `;
+      }
+      
+      const waHeaderText = document.getElementById('wa-preview-header-text');
+      if (headerType === 'TEXT' && headerText) {
+        waHeaderText.style.display = 'block';
+        let renderedHeader = headerText;
+        document.querySelectorAll('.tmpl-var-input[data-type="header"]').forEach(inp => {
+          const v = inp.getAttribute('data-var');
+          const val = inp.value || `{{${v}}}`;
+          renderedHeader = renderedHeader.replaceAll(`{{${v}}}`, `<span style="background:var(--primary-glow); color:var(--primary); border-radius:4px; padding:0 4px; font-weight:600;">${val}</span>`);
+        });
+        waHeaderText.innerHTML = renderedHeader;
+      } else {
+        waHeaderText.style.display = 'none';
+      }
+      
+      const waBody = document.getElementById('wa-preview-body');
+      let renderedBody = bodyText;
+      renderedBody = renderedBody.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      
+      document.querySelectorAll('.tmpl-var-input[data-type="body"]').forEach(inp => {
+        const v = inp.getAttribute('data-var');
+        const val = inp.value || `{{${v}}}`;
+        renderedBody = renderedBody.replaceAll(`{{${v}}}`, `<span style="background:var(--primary-glow); color:var(--primary); border-radius:4px; padding:0 4px; font-weight:600;">${val}</span>`);
+      });
+      
+      renderedBody = renderedBody.replace(/\*([^*]+)\*/g, '<strong>$1</strong>');
+      renderedBody = renderedBody.replace(/_([^_]+)_/g, '<em>$1</em>');
+      waBody.innerHTML = renderedBody;
+      
+      const waFooter = document.getElementById('wa-preview-footer');
+      if (footerText) {
+        waFooter.style.display = 'block';
+        waFooter.textContent = footerText;
+      } else {
+        waFooter.style.display = 'none';
+      }
+      
+      const waButtons = document.getElementById('wa-preview-buttons');
+      waButtons.innerHTML = '';
+      document.querySelectorAll('.tmpl-btn-input').forEach(inp => {
+        const text = inp.value.trim();
+        if (text) {
+          const btn = document.createElement('div');
+          btn.style = 'background: #ffffff; border-radius: 8px; box-shadow: 0 1.5px 2px rgba(0,0,0,0.15); padding: 10px; font-size: 13.5px; color: #008069; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;';
+          btn.innerHTML = `
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+            <span>${text}</span>
+          `;
+          waButtons.appendChild(btn);
+        }
+      });
+    }
+
     function toggleTmplHeaderType() {
       const type = document.getElementById('tmpl-header-type').value;
-      const container = document.getElementById('tmpl-header-text-container');
+      const textContainer = document.getElementById('tmpl-header-text-container');
+      const mediaContainer = document.getElementById('tmpl-header-media-container');
+      
       if (type === 'TEXT') {
-        container.style.display = 'block';
+        textContainer.style.display = 'block';
+        mediaContainer.style.display = 'none';
+      } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(type)) {
+        textContainer.style.display = 'none';
+        mediaContainer.style.display = 'block';
       } else {
-        container.style.display = 'none';
+        textContainer.style.display = 'none';
+        mediaContainer.style.display = 'none';
       }
+      updateVariableInputs();
+      updateLivePreview();
     }
 
     async function submitMetaTemplate(e) {
@@ -2169,51 +2508,64 @@
       const footerText = document.getElementById('tmpl-footer').value.trim();
       
       if (!name || !body) return alert('Name and body are required.');
+      
+      // Validate media headers
+      const mediaUrl = document.getElementById('tmpl-media-url-resolved').value || (tmplMediaSourceMode === 'url' ? document.getElementById('tmpl-media-url-input').value.trim() : '');
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && !mediaUrl) {
+        return alert('Please upload a file or enter a URL for the media header.');
+      }
+
       const btn = document.getElementById('tmpl-create-btn');
       btn.disabled = true; btn.textContent = 'Submitting...';
       
       const components = [];
       if (headerType === 'TEXT' && headerText) {
-        components.push({
+        const headerComp = {
           type: 'HEADER',
           format: 'TEXT',
           text: headerText
-        });
-      } else if (headerType === 'IMAGE') {
+        };
+        const headerVars = (headerText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
+        const uniqueHeaderVars = [...new Set(headerVars)].sort((a, b) => a - b);
+        if (uniqueHeaderVars.length > 0) {
+          const samples = [];
+          uniqueHeaderVars.forEach(v => {
+            const val = document.getElementById(`tmpl-var-header-${v}`)?.value.trim() || 'Sample';
+            samples.push(val);
+          });
+          headerComp.example = {
+            header_text: samples
+          };
+        }
+        components.push(headerComp);
+      } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType)) {
         components.push({
           type: 'HEADER',
-          format: 'IMAGE',
+          format: headerType,
           example: {
-            header_handle: [
-              "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800"
-            ]
-          }
-        });
-      } else if (headerType === 'VIDEO') {
-        components.push({
-          type: 'HEADER',
-          format: 'VIDEO',
-          example: {
-            header_handle: [
-              "https://www.w3schools.com/html/mov_bbb.mp4"
-            ]
-          }
-        });
-      } else if (headerType === 'DOCUMENT') {
-        components.push({
-          type: 'HEADER',
-          format: 'DOCUMENT',
-          example: {
-            header_handle: [
-              "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-            ]
+            header_handle: [ mediaUrl ]
           }
         });
       }
-      components.push({
+
+      const bodyComp = {
         type: 'BODY',
         text: body
-      });
+      };
+      const bodyVars = (body.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
+      const uniqueBodyVars = [...new Set(bodyVars)].sort((a, b) => a - b);
+      if (uniqueBodyVars.length > 0) {
+        const samples = [];
+        uniqueBodyVars.forEach(v => {
+          const val = document.getElementById(`tmpl-var-body-${v}`)?.value.trim() || 'Sample';
+          samples.push(val);
+        });
+        bodyComp.example = {
+          body_text: [ samples ]
+        };
+      }
+      components.push(bodyComp);
+
       if (footerText) {
         components.push({
           type: 'FOOTER',
@@ -2251,6 +2603,17 @@
         if (r.ok) {
           alert('Template submitted successfully!');
           e.target.reset();
+          
+          // Clear custom uploads/resolved inputs
+          document.getElementById('tmpl-media-url-resolved').value = '';
+          document.getElementById('tmpl-media-url-input').value = '';
+          document.getElementById('tmpl-media-file-name').textContent = 'No file chosen';
+          document.getElementById('tmpl-media-upload-status').style.display = 'none';
+          
+          // Update variables & preview
+          updateVariableInputs();
+          updateLivePreview();
+          
           loadTemplates();
         } else {
           alert('Failed to submit template: ' + (d.error || 'Unknown error'));
@@ -2456,6 +2819,35 @@
     document.addEventListener('DOMContentLoaded', () => {
       const sbInput = document.getElementById('sb-input');
       if (sbInput) sbInput.addEventListener('keydown', e => { if (e.key === 'Enter') sbSearch(); });
+
+      // Bind Template Builder Inputs for Live Preview and Dynamic Variable Detection
+      const tmplName = document.getElementById('tmpl-name');
+      const tmplHeader = document.getElementById('tmpl-header');
+      const tmplBody = document.getElementById('tmpl-body');
+      const tmplFooter = document.getElementById('tmpl-footer');
+      
+      if (tmplName) tmplName.addEventListener('input', updateLivePreview);
+      if (tmplHeader) {
+        tmplHeader.addEventListener('input', () => {
+          updateVariableInputs();
+          updateLivePreview();
+        });
+      }
+      if (tmplBody) {
+        tmplBody.addEventListener('input', () => {
+          updateVariableInputs();
+          updateLivePreview();
+        });
+      }
+      if (tmplFooter) tmplFooter.addEventListener('input', updateLivePreview);
+      
+      // Bind quick reply buttons
+      document.querySelectorAll('.tmpl-btn-input').forEach(inp => {
+        inp.addEventListener('input', updateLivePreview);
+      });
+      
+      // Initialize preview on load
+      updateLivePreview();
     });
   </script>
 </body>
