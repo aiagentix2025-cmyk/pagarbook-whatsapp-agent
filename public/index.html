@@ -905,13 +905,14 @@
                 <input id="tmpl-footer" placeholder="e.g. Reply STOP to unsubscribe">
               </div>
               
-              <!-- Quick Reply Buttons -->
+              <!-- Dynamic Actions Buttons -->
               <div class="fg">
-                <label>Quick Reply Buttons (Optional, Max 3)</label>
-                <div id="tmpl-buttons-container" style="display:flex; flex-direction:column; gap:8px;">
-                  <input class="tmpl-btn-input" placeholder="Button 1 Title (e.g. Interested)">
-                  <input class="tmpl-btn-input" placeholder="Button 2 Title (e.g. Talk to Human)">
-                  <input class="tmpl-btn-input" placeholder="Button 3 Title (e.g. Not Interested)">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <label style="margin-bottom:0;">Buttons (Optional, Max 10)</label>
+                  <button type="button" class="btn sec" onclick="addTmplButton()" style="padding:4px 10px; font-size:12px; border-radius:6px; background:var(--primary-glow); color:var(--primary); border:1px solid rgba(99,102,241,0.2);">+ Add Button</button>
+                </div>
+                <div id="tmpl-buttons-list" style="display:flex; flex-direction:column; gap:12px; margin-bottom:10px;">
+                  <!-- Dynamic buttons will be rendered here -->
                 </div>
               </div>
 
@@ -2238,138 +2239,104 @@
       }
     }
 
-    let tmplMediaSourceMode = 'upload';
+    let tmplButtons = [];
 
-    function setTmplMediaSource(mode) {
-      tmplMediaSourceMode = mode;
-      const btnUpload = document.getElementById('tmpl-media-src-upload');
-      const btnUrl = document.getElementById('tmpl-media-src-url');
-      const wrapperUpload = document.getElementById('tmpl-media-upload-wrapper');
-      const wrapperUrl = document.getElementById('tmpl-media-url-wrapper');
-      
-      if (mode === 'upload') {
-        btnUpload.style.background = 'var(--primary)';
-        btnUpload.style.color = '#fff';
-        btnUrl.style.background = 'none';
-        btnUrl.style.color = 'var(--text)';
-        wrapperUpload.style.display = 'flex';
-        wrapperUrl.style.display = 'none';
-      } else {
-        btnUrl.style.background = 'var(--primary)';
-        btnUrl.style.color = '#fff';
-        btnUpload.style.background = 'none';
-        btnUpload.style.color = 'var(--text)';
-        wrapperUpload.style.display = 'none';
-        wrapperUrl.style.display = 'block';
+    function addTmplButton() {
+      if (tmplButtons.length >= 10) {
+        alert('WhatsApp templates support a maximum of 10 buttons.');
+        return;
       }
+      tmplButtons.push({ type: 'QUICK_REPLY', text: 'Reply', value: '' });
+      renderTmplButtons();
       updateLivePreview();
     }
 
-    async function handleTmplMediaUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      if (!clientId) {
-        alert('Please select a client from the top dropdown first.');
-        e.target.value = '';
-        return;
-      }
-      
-      document.getElementById('tmpl-media-file-name').textContent = file.name;
-      const statusDiv = document.getElementById('tmpl-media-upload-status');
-      statusDiv.style.display = 'block';
-      statusDiv.textContent = 'Uploading media to server...';
-      
-      const reader = new FileReader();
-      reader.onload = async function() {
-        const base64Data = reader.result.split(',')[1];
-        try {
-          const response = await fetch('/api/media/upload', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              client_id: clientId,
-              file_name: file.name,
-              file_data: base64Data
-            })
-          });
-          const data = await response.json();
-          if (response.ok && data.file_url) {
-            statusDiv.textContent = 'Upload complete!';
-            document.getElementById('tmpl-media-url-resolved').value = data.file_url;
-            updateLivePreview();
-          } else {
-            statusDiv.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
-          }
-        } catch (err) {
-          statusDiv.textContent = 'Upload error: ' + err.message;
-        }
-      };
-      reader.readAsDataURL(file);
+    function removeTmplButton(index) {
+      tmplButtons.splice(index, 1);
+      renderTmplButtons();
+      updateLivePreview();
     }
 
-    let currentVariables = { header: [], body: [] };
-
-    function updateVariableInputs() {
-      const headerType = document.getElementById('tmpl-header-type').value;
-      const headerText = document.getElementById('tmpl-header').value;
-      const bodyText = document.getElementById('tmpl-body').value;
+    function changeTmplButtonType(index, type) {
+      tmplButtons[index].type = type;
+      tmplButtons[index].value = ''; // Reset value
       
-      const headerVars = headerType === 'TEXT' ? (headerText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, '')) : [];
-      const bodyVars = (bodyText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
-      
-      const uniqueHeaderVars = [...new Set(headerVars)].sort((a, b) => a - b);
-      const uniqueBodyVars = [...new Set(bodyVars)].sort((a, b) => a - b);
-      
-      const headerChanged = JSON.stringify(uniqueHeaderVars) !== JSON.stringify(currentVariables.header);
-      const bodyChanged = JSON.stringify(uniqueBodyVars) !== JSON.stringify(currentVariables.body);
-      
-      if (!headerChanged && !bodyChanged) {
-        return;
+      if (type === 'QUICK_REPLY') {
+        tmplButtons[index].text = 'Reply';
+      } else if (type === 'URL') {
+        tmplButtons[index].text = 'Visit Website';
+      } else if (type === 'WHATSAPP') {
+        tmplButtons[index].text = 'Message on WA';
+      } else if (type === 'PHONE_NUMBER') {
+        tmplButtons[index].text = 'Call Us';
       }
       
-      const savedVals = {};
-      document.querySelectorAll('.tmpl-var-input').forEach(inp => {
-        savedVals[inp.id] = inp.value;
-      });
-      
-      currentVariables.header = uniqueHeaderVars;
-      currentVariables.body = uniqueBodyVars;
-      
-      const container = document.getElementById('tmpl-variables-samples-container');
+      renderTmplButtons();
+      updateLivePreview();
+    }
+
+    function updateTmplButtonText(index, text) {
+      tmplButtons[index].text = text;
+      updateLivePreview();
+    }
+
+    function updateTmplButtonValue(index, val) {
+      tmplButtons[index].value = val;
+      updateLivePreview();
+    }
+
+    function renderTmplButtons() {
+      const container = document.getElementById('tmpl-buttons-list');
       container.innerHTML = '';
       
-      if (uniqueHeaderVars.length === 0 && uniqueBodyVars.length === 0) {
-        document.getElementById('tmpl-variables-wrapper').style.display = 'none';
-        return;
-      }
-      
-      document.getElementById('tmpl-variables-wrapper').style.display = 'block';
-      
-      uniqueHeaderVars.forEach(v => {
-        const id = `tmpl-var-header-${v}`;
-        const val = savedVals[id] || '';
-        const fg = document.createElement('div');
-        fg.style = 'display:flex; flex-direction:column; gap:4px;';
-        fg.innerHTML = `
-          <span style="font-size:11.5px; font-weight:600;">Header Variable {{${v}}} Sample Value:</span>
-          <input class="tmpl-var-input" id="${id}" data-type="header" data-var="${v}" placeholder="e.g. John" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
+      tmplButtons.forEach((btn, index) => {
+        const div = document.createElement('div');
+        div.style = 'border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; background: #f8faff; display: flex; flex-direction: column; gap: 8px; position: relative;';
+        
+        let valDisplay = 'none';
+        let valLabel = 'Link URL';
+        let valPlaceholder = 'e.g. https://www.example.com';
+        
+        if (btn.type === 'URL') {
+          valDisplay = 'flex';
+          valLabel = 'Website URL (Must start with http:// or https://)';
+          valPlaceholder = 'e.g. https://www.example.com';
+        } else if (btn.type === 'WHATSAPP') {
+          valDisplay = 'flex';
+          valLabel = 'WhatsApp Link OR Phone Number (Include country code)';
+          valPlaceholder = 'e.g. +919876543210 or https://wa.me/...';
+        } else if (btn.type === 'PHONE_NUMBER') {
+          valDisplay = 'flex';
+          valLabel = 'Phone Number (Include country code)';
+          valPlaceholder = 'e.g. +919876543210';
+        }
+        
+        div.innerHTML = `
+          <button type="button" class="btn-rm" onclick="removeTmplButton(${index})" style="position: absolute; top: 12px; right: 12px; font-size: 13px;">✕</button>
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Type of Action</span>
+              <select onchange="changeTmplButtonType(${index}, this.value)" style="padding: 8px 10px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border); background: white; outline: none; font-family: inherit; color: var(--text);">
+                <option value="QUICK_REPLY" ${btn.type === 'QUICK_REPLY' ? 'selected' : ''}>Quick Reply (Custom)</option>
+                <option value="URL" ${btn.type === 'URL' ? 'selected' : ''}>Visit Website (URL)</option>
+                <option value="WHATSAPP" ${btn.type === 'WHATSAPP' ? 'selected' : ''}>Call on WhatsApp</option>
+                <option value="PHONE_NUMBER" ${btn.type === 'PHONE_NUMBER' ? 'selected' : ''}>Call Phone Number</option>
+              </select>
+            </div>
+            <div style="flex: 1.5; min-width: 160px; display: flex; flex-direction: column; gap: 4px;">
+              <span style="font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;">Button Text (Max 25 chars)</span>
+              <input type="text" maxlength="25" placeholder="e.g. Click Here" value="${btn.text}" oninput="updateTmplButtonText(${index}, this.value)" style="padding: 8px 10px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border); background: white; outline: none; width: 100%;">
+            </div>
+          </div>
+          
+          <div class="tmpl-button-val-container" style="display: ${valDisplay}; flex-direction: column; gap: 4px;">
+            <span style="font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase;">${valLabel}</span>
+            <input type="text" placeholder="${valPlaceholder}" value="${btn.value}" oninput="updateTmplButtonValue(${index}, this.value)" style="padding: 8px 10px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border); background: white; outline: none; width: 100%;">
+          </div>
         `;
-        container.appendChild(fg);
-        fg.querySelector('input').addEventListener('input', updateLivePreview);
-      });
-      
-      uniqueBodyVars.forEach(v => {
-        const id = `tmpl-var-body-${v}`;
-        const val = savedVals[id] || '';
-        const fg = document.createElement('div');
-        fg.style = 'display:flex; flex-direction:column; gap:4px;';
-        fg.innerHTML = `
-          <span style="font-size:11.5px; font-weight:600;">Body Variable {{${v}}} Sample Value:</span>
-          <input class="tmpl-var-input" id="${id}" data-type="body" data-var="${v}" placeholder="e.g. $100 or January" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
-        `;
-        container.appendChild(fg);
-        fg.querySelector('input').addEventListener('input', updateLivePreview);
+        
+        container.appendChild(div);
       });
     }
 
@@ -2463,16 +2430,26 @@
       
       const waButtons = document.getElementById('wa-preview-buttons');
       waButtons.innerHTML = '';
-      document.querySelectorAll('.tmpl-btn-input').forEach(inp => {
-        const text = inp.value.trim();
+      tmplButtons.forEach(btn => {
+        const text = btn.text.trim();
         if (text) {
-          const btn = document.createElement('div');
-          btn.style = 'background: #ffffff; border-radius: 8px; box-shadow: 0 1.5px 2px rgba(0,0,0,0.15); padding: 10px; font-size: 13.5px; color: #008069; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;';
-          btn.innerHTML = `
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
+          const btnEl = document.createElement('div');
+          btnEl.style = 'background: #ffffff; border-radius: 8px; box-shadow: 0 1.5px 2px rgba(0,0,0,0.15); padding: 10px; font-size: 13.5px; color: #008069; font-weight: 600; text-align: center; display: flex; align-items: center; justify-content: center; gap: 6px;';
+          
+          let iconSvg = '';
+          if (btn.type === 'URL' || btn.type === 'WHATSAPP') {
+            iconSvg = `<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>`;
+          } else if (btn.type === 'PHONE_NUMBER') {
+            iconSvg = `<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 02-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>`;
+          } else {
+            iconSvg = `<svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>`;
+          }
+          
+          btnEl.innerHTML = `
+            ${iconSvg}
             <span>${text}</span>
           `;
-          waButtons.appendChild(btn);
+          waButtons.appendChild(btnEl);
         }
       });
     }
@@ -2573,17 +2550,67 @@
         });
       }
       
+      // Validate and build buttons payload
       const buttons = [];
-      const btnInputs = document.querySelectorAll('.tmpl-btn-input');
-      btnInputs.forEach(inp => {
-        const val = inp.value.trim();
-        if (val) {
+      for (let i = 0; i < tmplButtons.length; i++) {
+        const btn = tmplButtons[i];
+        const btnText = btn.text.trim();
+        if (!btnText) continue;
+        
+        if (btn.type === 'QUICK_REPLY') {
           buttons.push({
             type: 'QUICK_REPLY',
-            text: val
+            text: btnText
+          });
+        } else if (btn.type === 'URL') {
+          const urlVal = btn.value.trim();
+          if (!urlVal) {
+            btn.disabled = false; btn.textContent = 'Create Template';
+            return alert('Please enter a website URL for the button: ' + btnText);
+          }
+          if (!urlVal.startsWith('http://') && !urlVal.startsWith('https://')) {
+            btn.disabled = false; btn.textContent = 'Create Template';
+            return alert('Website URL must start with http:// or https:// for button: ' + btnText);
+          }
+          buttons.push({
+            type: 'URL',
+            text: btnText,
+            url: urlVal
+          });
+        } else if (btn.type === 'WHATSAPP') {
+          let waVal = btn.value.trim();
+          if (!waVal) {
+            btn.disabled = false; btn.textContent = 'Create Template';
+            return alert('Please enter a WhatsApp link or phone number for the button: ' + btnText);
+          }
+          if (!waVal.startsWith('http://') && !waVal.startsWith('https://')) {
+            const cleanPhone = waVal.replace(/[^\d+]/g, '').replace(/^\+/, '');
+            waVal = `https://wa.me/${cleanPhone}`;
+          }
+          buttons.push({
+            type: 'URL',
+            text: btnText,
+            url: waVal
+          });
+        } else if (btn.type === 'PHONE_NUMBER') {
+          const phoneVal = btn.value.trim();
+          if (!phoneVal) {
+            btn.disabled = false; btn.textContent = 'Create Template';
+            return alert('Please enter a phone number for the button: ' + btnText);
+          }
+          const cleanPhone = phoneVal.replace(/[^\d+]/g, '');
+          if (!cleanPhone) {
+            btn.disabled = false; btn.textContent = 'Create Template';
+            return alert('Please enter a valid phone number for the button: ' + btnText);
+          }
+          buttons.push({
+            type: 'PHONE_NUMBER',
+            text: btnText,
+            phone_number: cleanPhone
           });
         }
-      });
+      }
+      
       if (buttons.length > 0) {
         components.push({
           type: 'BUTTONS',
@@ -2609,6 +2636,9 @@
           document.getElementById('tmpl-media-url-input').value = '';
           document.getElementById('tmpl-media-file-name').textContent = 'No file chosen';
           document.getElementById('tmpl-media-upload-status').style.display = 'none';
+          
+          tmplButtons = [];
+          renderTmplButtons();
           
           // Update variables & preview
           updateVariableInputs();
@@ -2841,10 +2871,8 @@
       }
       if (tmplFooter) tmplFooter.addEventListener('input', updateLivePreview);
       
-      // Bind quick reply buttons
-      document.querySelectorAll('.tmpl-btn-input').forEach(inp => {
-        inp.addEventListener('input', updateLivePreview);
-      });
+      // Initialize dynamic buttons list
+      renderTmplButtons();
       
       // Initialize preview on load
       updateLivePreview();
