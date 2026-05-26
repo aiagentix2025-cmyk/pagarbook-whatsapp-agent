@@ -2239,6 +2239,141 @@
       }
     }
 
+    let tmplMediaSourceMode = 'upload';
+
+    function setTmplMediaSource(mode) {
+      tmplMediaSourceMode = mode;
+      const btnUpload = document.getElementById('tmpl-media-src-upload');
+      const btnUrl = document.getElementById('tmpl-media-src-url');
+      const wrapperUpload = document.getElementById('tmpl-media-upload-wrapper');
+      const wrapperUrl = document.getElementById('tmpl-media-url-wrapper');
+      
+      if (mode === 'upload') {
+        btnUpload.style.background = 'var(--primary)';
+        btnUpload.style.color = '#fff';
+        btnUrl.style.background = 'none';
+        btnUrl.style.color = 'var(--text)';
+        wrapperUpload.style.display = 'flex';
+        wrapperUrl.style.display = 'none';
+      } else {
+        btnUrl.style.background = 'var(--primary)';
+        btnUrl.style.color = '#fff';
+        btnUpload.style.background = 'none';
+        btnUpload.style.color = 'var(--text)';
+        wrapperUpload.style.display = 'none';
+        wrapperUrl.style.display = 'block';
+      }
+      updateLivePreview();
+    }
+
+    async function handleTmplMediaUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!clientId) {
+        alert('Please select a client from the top dropdown first.');
+        e.target.value = '';
+        return;
+      }
+      
+      document.getElementById('tmpl-media-file-name').textContent = file.name;
+      const statusDiv = document.getElementById('tmpl-media-upload-status');
+      statusDiv.style.display = 'block';
+      statusDiv.textContent = 'Uploading media to server...';
+      
+      const reader = new FileReader();
+      reader.onload = async function() {
+        const base64Data = reader.result.split(',')[1];
+        try {
+          const response = await fetch('/api/media/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: clientId,
+              file_name: file.name,
+              file_data: base64Data
+            })
+          });
+          const data = await response.json();
+          if (response.ok && data.file_url) {
+            statusDiv.textContent = 'Upload complete!';
+            document.getElementById('tmpl-media-url-resolved').value = data.file_url;
+            updateLivePreview();
+          } else {
+            statusDiv.textContent = 'Upload failed: ' + (data.error || 'Unknown error');
+          }
+        } catch (err) {
+          statusDiv.textContent = 'Upload error: ' + err.message;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    let currentVariables = { header: [], body: [] };
+
+    function updateVariableInputs() {
+      const headerType = document.getElementById('tmpl-header-type').value;
+      const headerText = document.getElementById('tmpl-header').value;
+      const bodyText = document.getElementById('tmpl-body').value;
+      
+      const headerVars = headerType === 'TEXT' ? (headerText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, '')) : [];
+      const bodyVars = (bodyText.match(/\{\{(\d+)\}\}/g) || []).map(v => v.replace(/[{}]/g, ''));
+      
+      const uniqueHeaderVars = [...new Set(headerVars)].sort((a, b) => a - b);
+      const uniqueBodyVars = [...new Set(bodyVars)].sort((a, b) => a - b);
+      
+      const headerChanged = JSON.stringify(uniqueHeaderVars) !== JSON.stringify(currentVariables.header);
+      const bodyChanged = JSON.stringify(uniqueBodyVars) !== JSON.stringify(currentVariables.body);
+      
+      if (!headerChanged && !bodyChanged) {
+        return;
+      }
+      
+      const savedVals = {};
+      document.querySelectorAll('.tmpl-var-input').forEach(inp => {
+        savedVals[inp.id] = inp.value;
+      });
+      
+      currentVariables.header = uniqueHeaderVars;
+      currentVariables.body = uniqueBodyVars;
+      
+      const container = document.getElementById('tmpl-variables-samples-container');
+      container.innerHTML = '';
+      
+      if (uniqueHeaderVars.length === 0 && uniqueBodyVars.length === 0) {
+        document.getElementById('tmpl-variables-wrapper').style.display = 'none';
+        return;
+      }
+      
+      document.getElementById('tmpl-variables-wrapper').style.display = 'block';
+      
+      uniqueHeaderVars.forEach(v => {
+        const id = `tmpl-var-header-${v}`;
+        const val = savedVals[id] || '';
+        const fg = document.createElement('div');
+        fg.style = 'display:flex; flex-direction:column; gap:4px;';
+        fg.innerHTML = `
+          <span style="font-size:11.5px; font-weight:600;">Header Variable {{${v}}} Sample Value:</span>
+          <input class="tmpl-var-input" id="${id}" data-type="header" data-var="${v}" placeholder="e.g. John" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
+        `;
+        container.appendChild(fg);
+        fg.querySelector('input').addEventListener('input', updateLivePreview);
+      });
+      
+      uniqueBodyVars.forEach(v => {
+        const id = `tmpl-var-body-${v}`;
+        const val = savedVals[id] || '';
+        const fg = document.createElement('div');
+        fg.style = 'display:flex; flex-direction:column; gap:4px;';
+        fg.innerHTML = `
+          <span style="font-size:11.5px; font-weight:600;">Body Variable {{${v}}} Sample Value:</span>
+          <input class="tmpl-var-input" id="${id}" data-type="body" data-var="${v}" placeholder="e.g. $100 or January" value="${val}" style="background:#f8faff; border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:13px; outline:none;">
+        `;
+        container.appendChild(fg);
+        fg.querySelector('input').addEventListener('input', updateLivePreview);
+      });
+    }
+
     let tmplButtons = [];
 
     function addTmplButton() {
