@@ -496,6 +496,7 @@ app.get('/api/sessions/:id', async (req, res) => {
     // Map to frontend compatibility format
     res.json(result.rows.map(row => ({
       id: row.id,
+      sender_type: row.sender_type,
       type: row.sender_type === 'human' ? 'human' : 'ai',
       message_type: row.message_type,
       content: row.message_content,
@@ -1314,6 +1315,23 @@ app.post('/webhook', async (req, res) => {
         session = createSession.rows[0];
       } else {
         session = sessionRes.rows[0];
+      }
+
+      // Auto-save/update contact in public.contacts with WhatsApp profile name
+      try {
+        await tenantPool.query(`
+          INSERT INTO public.contacts (name, phone, updated_at)
+          VALUES ($1, $2, CURRENT_TIMESTAMP)
+          ON CONFLICT (phone) DO UPDATE SET
+            name = CASE 
+              WHEN public.contacts.name IS NULL OR public.contacts.name = '' OR public.contacts.name = 'Customer' THEN EXCLUDED.name
+              ELSE public.contacts.name
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        `, [profileName || 'Customer', recipientPhone]);
+        console.log(`Saved/updated contact for ${recipientPhone} as ${profileName || 'Customer'}`);
+      } catch (contactErr) {
+        console.error(`Failed to save/update contact for ${recipientPhone}:`, contactErr.message);
       }
 
       // C. Human Takeover (Pause check)
