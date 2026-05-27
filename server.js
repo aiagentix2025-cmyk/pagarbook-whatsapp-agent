@@ -1353,22 +1353,6 @@ app.post('/webhook', async (req, res) => {
       }
 
       // D. Message Content Parsing (Text vs Image vs Interactive Buttons)
-      // Keyword Handoff Check (Talk to Human)
-      if (userTextContent && userTextContent.toLowerCase().match(/(talk to human|talk to an agent|support|customer service|need a person)/i)) {
-        await tenantPool.query(
-          "UPDATE public.chat_sessions SET session_status = 'paused', human_intervened_at = CURRENT_TIMESTAMP WHERE id = $1",
-          [session.id]
-        );
-        const handoffMsg = "I've paused the automated assistant and notified our human team. Someone will be with you shortly!";
-        await sendWhatsAppMessage(recipientPhone, handoffMsg, client.system_access_token, client.phone_number_id);
-        
-        await tenantPool.query(
-          `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) VALUES ($1, 'ai', 'text', $2)`,
-          [session.id, handoffMsg]
-        );
-        return; // Halt AI pipeline
-      }
-
       let userTextContent = '';
       let mediaId = null;
       let hasImage = false;
@@ -1486,13 +1470,13 @@ app.post('/webhook', async (req, res) => {
       }
 
       // E2. Human Handover Detection
-      const handoverRegex = /\b(human|agent|support|speak to someone|real person)\b/i;
+      const handoverRegex = /\b(human|agent|support|speak to someone|real person|talk to human|talk to an agent|customer service|need a person)\b/i;
       if (handoverRegex.test(userTextContent)) {
         console.log(`Human handover request detected from ${recipientPhone}: "${userTextContent}"`);
         
         // Pause the session
         await tenantPool.query(
-          "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP WHERE id = $1",
+          "UPDATE public.chat_sessions SET session_status = 'paused', last_interaction = CURRENT_TIMESTAMP, human_intervened_at = CURRENT_TIMESTAMP WHERE id = $1",
           [session.id]
         );
 
