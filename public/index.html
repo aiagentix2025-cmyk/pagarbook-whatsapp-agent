@@ -400,6 +400,42 @@
       transition: width 0.3s ease;
       border-radius: 2px;
     }
+    /* ── Automations / Flow Builder Styles ──── */
+    .palette-node {
+      padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+      cursor: grab; text-align: center; user-select: none; transition: opacity 0.15s;
+    }
+    .palette-node:hover { opacity: 0.8; }
+    .flow-canvas-node {
+      position: absolute; min-width: 180px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      cursor: pointer; user-select: none; font-size: 13px; overflow: hidden;
+    }
+    .flow-node-header {
+      padding: 8px 12px; font-weight: 700; display: flex; align-items: center; gap: 6px;
+    }
+    .flow-node-body { padding: 8px 12px; background: #fff; font-size: 12px; color: var(--muted); min-height: 32px; }
+    .flow-node-port {
+      width: 12px; height: 12px; background: #fff; border: 2px solid #6366f1;
+      border-radius: 50%; position: absolute; cursor: crosshair;
+    }
+    .automation-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+      transition: box-shadow 0.15s;
+    }
+    .automation-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); }
+    .auto-step-row {
+      background: #f8faff; border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start;
+    }
+    .flow-list-card {
+      background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
+      cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .flow-list-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: var(--primary); }
+    .badge-status-active { background: #d1fae5; color: #065f46; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .badge-status-draft { background: #f3f4f6; color: #6b7280; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -1362,34 +1398,94 @@
       </div>
 
       <!-- ─── TAB: AUTOMATIONS / FLOWS ────────────────────────────── -->
+      <!-- ─── TAB: AUTOMATIONS (Full Production) ──────────────────── -->
       <div class="tab" id="tab-flows">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-          <div>
-            <h2 style="font-size:20px; font-weight:700;">No-Code Automations</h2>
-            <p style="font-size:13px; color:var(--muted); margin-top:4px;">Build visual drag-and-drop conversational workflows.</p>
-          </div>
-          <div style="display:flex; gap:12px;">
-            <button class="btn sec" onclick="loadFlowsList()">Load Flows</button>
-            <button class="btn" onclick="saveActiveFlow()">Save Flow</button>
-          </div>
-        </div>
-        
-        <div style="display:flex; gap:16px; margin-bottom:16px;">
-          <input id="flow-name" class="input" style="flex:1; border:1px solid var(--border); padding:10px 16px; border-radius:8px;" placeholder="Flow Name (e.g. Onboarding)">
-          <select id="flow-trigger-type" class="input" style="width:200px; border:1px solid var(--border); padding:10px 16px; border-radius:8px;">
-            <option value="keyword">Keyword Match</option>
-          </select>
-          <input id="flow-trigger-keyword" class="input" style="width:200px; border:1px solid var(--border); padding:10px 16px; border-radius:8px;" placeholder="Trigger Word (e.g. START)">
+        <!-- Sub-nav tabs -->
+        <div style="display:flex; gap:0; margin-bottom:20px; border-bottom:2px solid var(--border);">
+          <button id="subtab-automations-btn" onclick="switchAutomationSubTab('automations')" style="padding:10px 24px; font-weight:600; font-size:14px; border:none; background:none; cursor:pointer; border-bottom:3px solid var(--primary); color:var(--primary); margin-bottom:-2px;">⚡ Automations</button>
+          <button id="subtab-flows-btn" onclick="switchAutomationSubTab('flowbuilder')" style="padding:10px 24px; font-weight:600; font-size:14px; border:none; background:none; cursor:pointer; color:var(--muted);">🔀 Flow Builder</button>
         </div>
 
-        <div style="display:flex; height:calc(100vh - 280px); border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-          <div style="width:200px; background:#fff; border-right:1px solid var(--border); padding:16px; display:flex; flex-direction:column; gap:12px;">
-            <div style="font-weight:600; font-size:13px; margin-bottom:8px; color:var(--muted); text-transform:uppercase;">Nodes</div>
-            <div class="drag-drawflow" draggable="true" ondragstart="dragNode(event)" data-node="trigger" style="padding:10px; border:1px solid var(--success); border-radius:6px; cursor:grab; background:#d1fae5; font-size:13px; font-weight:600; color:#047857; text-align:center;">Trigger Entry</div>
-            <div class="drag-drawflow" draggable="true" ondragstart="dragNode(event)" data-node="message" style="padding:10px; border:1px solid var(--primary); border-radius:6px; cursor:grab; background:var(--primary-glow); font-size:13px; font-weight:600; color:var(--primary); text-align:center;">Send Message</div>
-            <div class="drag-drawflow" draggable="true" ondragstart="dragNode(event)" data-node="wait" style="padding:10px; border:1px solid var(--warning); border-radius:6px; cursor:grab; background:#fef3c7; font-size:13px; font-weight:600; color:var(--warning); text-align:center;">Wait for Reply</div>
+        <!-- === AUTOMATIONS SUB-TAB === -->
+        <div id="subtab-automations" style="display:block;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h2 style="font-size:18px; font-weight:700;">Automations</h2>
+              <p style="font-size:13px; color:var(--muted); margin-top:2px;">Auto-reply triggers that fire when messages match keywords or events occur.</p>
+            </div>
+            <button class="btn" onclick="openAutomationModal(null)" id="btn-new-automation">+ New Automation</button>
           </div>
-          <div id="drawflow" style="flex:1; background:#f8faff; position:relative;" ondrop="dropNode(event)" ondragover="allowDropNode(event)"></div>
+
+          <div id="automations-list-wrap">
+            <div style="text-align:center; padding:48px; color:var(--muted);">Loading automations…</div>
+          </div>
+        </div>
+
+        <!-- === FLOW BUILDER SUB-TAB === -->
+        <div id="subtab-flowbuilder" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h2 style="font-size:18px; font-weight:700;">Flow Builder</h2>
+              <p style="font-size:13px; color:var(--muted); margin-top:2px;">Build multi-step interactive conversation flows with buttons, lists, and conditions.</p>
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn sec" onclick="openNewFlowModal()">+ New Flow</button>
+              <button class="btn sec" id="btn-flow-back" onclick="backToFlowList()" style="display:none;">← All Flows</button>
+              <button class="btn" id="btn-save-flow" onclick="saveFlowCanvas()" style="display:none;">💾 Save Flow</button>
+            </div>
+          </div>
+
+          <!-- Flow list -->
+          <div id="flow-list-wrap">
+            <div style="text-align:center; padding:48px; color:var(--muted);">Loading flows…</div>
+          </div>
+
+          <!-- Flow canvas (hidden until a flow is opened) -->
+          <div id="flow-canvas-wrap" style="display:none;">
+            <div style="display:flex; gap:12px; margin-bottom:14px; align-items:center; flex-wrap:wrap;">
+              <div>
+                <span style="font-size:11px; color:var(--muted); text-transform:uppercase; font-weight:600;">Flow:</span>
+                <span id="canvas-flow-name" style="font-weight:700; font-size:16px; margin-left:8px;"></span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; margin-left:auto;">
+                <label style="font-size:13px; color:var(--muted);">Trigger:</label>
+                <select id="canvas-trigger-type" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+                  <option value="keyword">Keyword Match</option>
+                  <option value="first_inbound_message">First Message</option>
+                  <option value="manual">Manual</option>
+                </select>
+                <input id="canvas-trigger-keyword" placeholder="keyword…" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; width:140px;">
+                <select id="canvas-flow-status" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+                  <option value="draft">Draft</option>
+                  <option value="active">Active ✅</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:flex; height:calc(100vh - 340px); border:1px solid var(--border); border-radius:12px; overflow:hidden; background:#f0f4ff;">
+              <!-- Node palette -->
+              <div style="width:170px; background:#fff; border-right:1px solid var(--border); padding:14px; display:flex; flex-direction:column; gap:8px; overflow-y:auto;">
+                <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Add Node</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'trigger')" style="background:#d1fae5; border:1.5px solid #10b981; color:#047857;">⚡ Trigger</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'send_message')" style="background:#ede9fe; border:1.5px solid #7c3aed; color:#5b21b6;">💬 Message</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'send_buttons')" style="background:#dbeafe; border:1.5px solid #3b82f6; color:#1d4ed8;">🔘 Buttons</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'send_list')" style="background:#e0f2fe; border:1.5px solid #0284c7; color:#0369a1;">📋 List</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'collect_input')" style="background:#fef3c7; border:1.5px solid #d97706; color:#92400e;">📝 Collect Input</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'condition')" style="background:#fce7f3; border:1.5px solid #db2777; color:#9d174d;">⑂ Condition</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'set_tag')" style="background:#f0fdf4; border:1.5px solid #16a34a; color:#15803d;">🏷 Tag</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'handoff')" style="background:#fff7ed; border:1.5px solid #ea580c; color:#9a3412;">🤝 Handoff</div>
+                <div class="palette-node" draggable="true" ondragstart="paletteDrag(event,'end')" style="background:#f1f5f9; border:1.5px solid #64748b; color:#334155;">🔚 End</div>
+              </div>
+
+              <!-- Canvas -->
+              <div id="flow-canvas" style="flex:1; position:relative; overflow:auto;"
+                ondragover="event.preventDefault()"
+                ondrop="canvasDrop(event)">
+                <canvas id="flow-edges-canvas" style="position:absolute; top:0; left:0; pointer-events:none; z-index:1;"></canvas>
+                <div id="flow-nodes-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:2;"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1422,8 +1518,99 @@
       </div>
     </div>
   </div>
+  <!-- ═══ AUTOMATION MODAL ═══════════════════════════════════════════ -->
+  <div id="automation-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:16px; padding:28px; width:min(680px, 94vw); max-height:90vh; overflow-y:auto; box-shadow:0 24px 80px rgba(0,0,0,0.18);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 style="font-size:18px; font-weight:700;" id="automation-modal-title">New Automation</h2>
+        <button onclick="closeAutomationModal()" style="background:none; border:none; cursor:pointer; font-size:22px; color:var(--muted);">✕</button>
+      </div>
+      <input type="hidden" id="automation-edit-id">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <div>
+          <label style="font-size:12px; font-weight:600; color:var(--muted);">Name *</label>
+          <input id="auto-name" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;" placeholder="e.g. Welcome New Contact">
+        </div>
+        <div>
+          <label style="font-size:12px; font-weight:600; color:var(--muted);">Trigger Type *</label>
+          <select id="auto-trigger-type" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;" onchange="renderTriggerConfig()">
+            <option value="keyword_match">Keyword Match</option>
+            <option value="first_inbound_message">First Inbound Message</option>
+            <option value="new_contact">New Contact Added</option>
+          </select>
+        </div>
+      </div>
+      <div id="auto-trigger-config-wrap" style="margin-bottom:14px;"></div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:12px; font-weight:600; color:var(--muted);">Description</label>
+        <input id="auto-description" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;" placeholder="Optional description">
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <label style="font-size:13px; font-weight:700;">Steps</label>
+          <button class="btn sec" onclick="addAutomationStep()" style="font-size:12px; padding:5px 12px;">+ Add Step</button>
+        </div>
+        <div id="auto-steps-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="auto-is-active" style="width:16px; height:16px;">
+          <span style="font-size:13px; font-weight:600;">Activate immediately</span>
+        </label>
+        <div style="display:flex; gap:10px;">
+          <button class="btn sec" onclick="closeAutomationModal()">Cancel</button>
+          <button class="btn" onclick="saveAutomation()">Save Automation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ NEW FLOW MODAL ══════════════════════════════════════════════ -->
+  <div id="new-flow-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:16px; padding:28px; width:min(480px, 94vw); box-shadow:0 24px 80px rgba(0,0,0,0.18);">
+      <h2 style="font-size:17px; font-weight:700; margin-bottom:20px;">Create New Flow</h2>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; color:var(--muted);">Flow Name *</label>
+        <input id="new-flow-name" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;" placeholder="e.g. Product Inquiry Flow">
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:12px; font-weight:600; color:var(--muted);">Trigger Type</label>
+        <select id="new-flow-trigger" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;">
+          <option value="keyword">Keyword Match</option>
+          <option value="first_inbound_message">First Message</option>
+          <option value="manual">Manual Only</option>
+        </select>
+      </div>
+      <div style="margin-bottom:20px;">
+        <label style="font-size:12px; font-weight:600; color:var(--muted);">Keyword (if keyword trigger)</label>
+        <input id="new-flow-keyword" class="input" style="width:100%; border:1px solid var(--border); padding:8px 12px; margin-top:4px; border-radius:8px;" placeholder="e.g. MENU">
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <button class="btn sec" onclick="closeNewFlowModal()">Cancel</button>
+        <button class="btn" onclick="createNewFlow()">Create Flow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ NODE CONFIG MODAL ═══════════════════════════════════════════ -->
+  <div id="node-config-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:16px; padding:28px; width:min(560px, 94vw); max-height:90vh; overflow-y:auto; box-shadow:0 24px 80px rgba(0,0,0,0.18);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h2 id="node-modal-title" style="font-size:16px; font-weight:700;">Configure Node</h2>
+        <button onclick="closeNodeModal()" style="background:none; border:none; cursor:pointer; font-size:22px; color:var(--muted);">✕</button>
+      </div>
+      <div id="node-config-body"></div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn sec" onclick="closeNodeModal()">Cancel</button>
+        <button class="btn" onclick="saveNodeConfig()">Save Node</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Deals Modal -->
+
   <div id="deal-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
     <div style="background:#fff; padding:24px; border-radius:12px; width:400px; max-width:90%;">
       <h3 style="margin-top:0; margin-bottom:16px;">Create New Deal</h3>
@@ -4170,96 +4357,758 @@
       }
     }
 
+
+    // ════════════════════════════════════════════════════════
+    // AUTOMATIONS + FLOW BUILDER (Full Production)
+    // ════════════════════════════════════════════════════════
+
+    let currentFlowId = null;
+    let canvasNodes = {};   // { node_key: { node_type, config, x, y, el } }
+    let draggingNodeType = null;
+    let activeNodeKey = null;  // which node is selected for config
+
+    // ── Sub-tab switching ──────────────────────────────────
+    function switchAutomationSubTab(tab) {
+      document.getElementById('subtab-automations').style.display = tab === 'automations' ? 'block' : 'none';
+      document.getElementById('subtab-flowbuilder').style.display = tab === 'flowbuilder' ? 'block' : 'none';
+      document.getElementById('subtab-automations-btn').style.cssText =
+        tab === 'automations'
+          ? 'padding:10px 24px;font-weight:600;font-size:14px;border:none;background:none;cursor:pointer;border-bottom:3px solid var(--primary);color:var(--primary);margin-bottom:-2px;'
+          : 'padding:10px 24px;font-weight:600;font-size:14px;border:none;background:none;cursor:pointer;color:var(--muted);';
+      document.getElementById('subtab-flows-btn').style.cssText =
+        tab === 'flowbuilder'
+          ? 'padding:10px 24px;font-weight:600;font-size:14px;border:none;background:none;cursor:pointer;border-bottom:3px solid var(--primary);color:var(--primary);margin-bottom:-2px;'
+          : 'padding:10px 24px;font-weight:600;font-size:14px;border:none;background:none;cursor:pointer;color:var(--muted);';
+      if (tab === 'automations') loadAutomations();
+      if (tab === 'flowbuilder') loadFlowsList();
+    }
+
+    // ════════════════════════════════════════════════════════
+    // AUTOMATIONS
+    // ════════════════════════════════════════════════════════
+    async function loadAutomations() {
+      if (!clientId) return;
+      try {
+        const r = await fetch('/api/automations?client_id=' + clientId);
+        const list = await r.json();
+        const wrap = document.getElementById('automations-list-wrap');
+        if (!list.length) {
+          wrap.innerHTML = `<div style="text-align:center;padding:48px;color:var(--muted);">
+            <div style="font-size:40px;margin-bottom:12px;">⚡</div>
+            <div style="font-weight:600;font-size:15px;margin-bottom:8px;">No automations yet</div>
+            <p style="font-size:13px;">Create your first automation to auto-reply when a keyword is received.</p>
+          </div>`;
+          return;
+        }
+        wrap.innerHTML = list.map(a => `
+          <div class="automation-card">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:40px;height:40px;border-radius:10px;background:${a.is_active ? '#d1fae5' : '#f3f4f6'};display:flex;align-items:center;justify-content:center;font-size:20px;">${a.is_active ? '⚡' : '⏸'}</div>
+              <div>
+                <div style="font-weight:700;font-size:14px;">${esc(a.name)}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Trigger: <strong>${esc(a.trigger_type)}</strong> · Runs: <strong>${a.execution_count}</strong></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="${a.is_active ? 'badge-status-active' : 'badge-status-draft'}">${a.is_active ? 'Active' : 'Draft'}</span>
+              <button class="btn sec" style="font-size:12px;padding:5px 12px;" onclick="toggleAutomation('${a.id}', ${!a.is_active})">${a.is_active ? 'Deactivate' : 'Activate'}</button>
+              <button class="btn sec" style="font-size:12px;padding:5px 12px;" onclick="editAutomation('${a.id}')">Edit</button>
+              <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:18px;" onclick="deleteAutomation('${a.id}')" title="Delete">🗑</button>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) { console.error('loadAutomations:', e); }
+    }
+
+    // Current steps being edited
+    let automationSteps = [];
+
+    function openAutomationModal(id) {
+      automationSteps = [];
+      document.getElementById('automation-edit-id').value = id || '';
+      document.getElementById('automation-modal-title').textContent = id ? 'Edit Automation' : 'New Automation';
+      document.getElementById('auto-name').value = '';
+      document.getElementById('auto-description').value = '';
+      document.getElementById('auto-trigger-type').value = 'keyword_match';
+      document.getElementById('auto-is-active').checked = false;
+      renderTriggerConfig();
+      renderAutomationSteps();
+      document.getElementById('automation-modal').style.display = 'flex';
+    }
+
+    async function editAutomation(id) {
+      try {
+        const r = await fetch('/api/automations/' + id);
+        const auto = await r.json();
+        automationSteps = (auto.steps || []).map(s => ({ step_type: s.step_type, step_config: s.step_config }));
+        document.getElementById('automation-edit-id').value = auto.id;
+        document.getElementById('automation-modal-title').textContent = 'Edit Automation';
+        document.getElementById('auto-name').value = auto.name;
+        document.getElementById('auto-description').value = auto.description || '';
+        document.getElementById('auto-trigger-type').value = auto.trigger_type;
+        document.getElementById('auto-is-active').checked = auto.is_active;
+        renderTriggerConfig(auto.trigger_config);
+        renderAutomationSteps();
+        document.getElementById('automation-modal').style.display = 'flex';
+      } catch(e) { alert('Error loading automation: ' + e.message); }
+    }
+
+    function closeAutomationModal() {
+      document.getElementById('automation-modal').style.display = 'none';
+    }
+
+    function renderTriggerConfig(existing) {
+      const type = document.getElementById('auto-trigger-type').value;
+      const wrap = document.getElementById('auto-trigger-config-wrap');
+      if (type === 'keyword_match') {
+        const kws = (existing && existing.keywords) ? existing.keywords.join(', ') : '';
+        wrap.innerHTML = `
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">Keywords (comma-separated)</label>
+          <input id="auto-kw" class="input" style="width:100%;border:1px solid var(--border);padding:8px 12px;margin-top:4px;border-radius:8px;" placeholder="e.g. hi, hello, start" value="${esc(kws)}">
+          <div style="margin-top:8px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+            <label style="font-size:12px;font-weight:600;color:var(--muted);">Match Type:</label>
+            <select id="auto-match-type" style="border:1px solid var(--border);padding:5px 10px;border-radius:6px;font-size:12px;">
+              <option value="contains" ${existing && existing.match_type === 'contains' ? 'selected' : ''}>Contains</option>
+              <option value="exact" ${existing && existing.match_type === 'exact' ? 'selected' : ''}>Exact</option>
+            </select>
+          </div>`;
+      } else {
+        wrap.innerHTML = '';
+      }
+    }
+
+    function addAutomationStep() {
+      automationSteps.push({ step_type: 'send_message', step_config: { text: '' } });
+      renderAutomationSteps();
+    }
+
+    function renderAutomationSteps() {
+      const container = document.getElementById('auto-steps-list');
+      if (!automationSteps.length) {
+        container.innerHTML = `<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;border:1px dashed var(--border);border-radius:8px;">No steps yet. Click "+ Add Step" to add one.</div>`;
+        return;
+      }
+      container.innerHTML = automationSteps.map((s, i) => `
+        <div class="auto-step-row">
+          <div style="display:flex;flex-direction:column;gap:6px;flex:1;">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span style="background:var(--primary-glow);color:var(--primary);font-weight:700;font-size:11px;padding:2px 8px;border-radius:20px;">Step ${i+1}</span>
+              <select onchange="updateStepType(${i},this.value)" style="border:1px solid var(--border);padding:4px 8px;border-radius:6px;font-size:12px;">
+                <option value="send_message" ${s.step_type==='send_message'?'selected':''}>Send Message</option>
+                <option value="add_tag" ${s.step_type==='add_tag'?'selected':''}>Add Tag</option>
+                <option value="remove_tag" ${s.step_type==='remove_tag'?'selected':''}>Remove Tag</option>
+                <option value="assign_conversation" ${s.step_type==='assign_conversation'?'selected':''}>Assign Conversation</option>
+                <option value="close_conversation" ${s.step_type==='close_conversation'?'selected':''}>Close Conversation</option>
+                <option value="send_webhook" ${s.step_type==='send_webhook'?'selected':''}>Send Webhook</option>
+                <option value="wait" ${s.step_type==='wait'?'selected':''}>Wait</option>
+              </select>
+              <button onclick="removeStep(${i})" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;">✕</button>
+            </div>
+            ${renderStepConfig(s, i)}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderStepConfig(step, i) {
+      switch(step.step_type) {
+        case 'send_message':
+          return `<textarea oninput="automationSteps[${i}].step_config.text=this.value" rows="2" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;resize:vertical;" placeholder="Message text... Use {{message.text}} for the user's message">${esc(step.step_config.text||'')}</textarea>`;
+        case 'add_tag': case 'remove_tag':
+          return `<input oninput="automationSteps[${i}].step_config.tag_id=this.value" value="${esc(step.step_config.tag_id||'')}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" placeholder="Tag ID">`;
+        case 'assign_conversation':
+          return `<input oninput="automationSteps[${i}].step_config.agent_id=this.value" value="${esc(step.step_config.agent_id||'')}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" placeholder="Agent ID">`;
+        case 'send_webhook':
+          return `<input oninput="automationSteps[${i}].step_config.url=this.value" value="${esc(step.step_config.url||'')}" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:12px;" placeholder="https://webhook.site/...">`;
+        case 'wait':
+          return `<div style="display:flex;gap:8px;align-items:center;">
+            <input type="number" oninput="automationSteps[${i}].step_config.amount=Number(this.value)" value="${step.step_config.amount||1}" style="width:70px;border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+            <select onchange="automationSteps[${i}].step_config.unit=this.value" style="border:1px solid var(--border);border-radius:6px;padding:6px;font-size:12px;">
+              <option value="minutes" ${step.step_config.unit==='minutes'?'selected':''}>Minutes</option>
+              <option value="hours" ${step.step_config.unit==='hours'?'selected':''}>Hours</option>
+              <option value="days" ${step.step_config.unit==='days'?'selected':''}>Days</option>
+            </select>
+          </div>`;
+        default:
+          return '';
+      }
+    }
+
+    function updateStepType(i, newType) {
+      automationSteps[i] = { step_type: newType, step_config: {} };
+      renderAutomationSteps();
+    }
+
+    function removeStep(i) {
+      automationSteps.splice(i, 1);
+      renderAutomationSteps();
+    }
+
+    async function saveAutomation() {
+      const id = document.getElementById('automation-edit-id').value;
+      const name = document.getElementById('auto-name').value.trim();
+      const trigger_type = document.getElementById('auto-trigger-type').value;
+      const is_active = document.getElementById('auto-is-active').checked;
+      const description = document.getElementById('auto-description').value.trim();
+
+      if (!name || !trigger_type) return alert('Name and trigger type are required');
+      if (!clientId) return alert('Select a client first');
+
+      let trigger_config = {};
+      if (trigger_type === 'keyword_match') {
+        const kwEl = document.getElementById('auto-kw');
+        const mtEl = document.getElementById('auto-match-type');
+        trigger_config = {
+          keywords: kwEl ? kwEl.value.split(',').map(s=>s.trim()).filter(Boolean) : [],
+          match_type: mtEl ? mtEl.value : 'contains',
+          case_sensitive: false
+        };
+      }
+
+      try {
+        const payload = { client_id: clientId, name, description, trigger_type, trigger_config, is_active, steps: automationSteps };
+        const r = await fetch(id ? `/api/automations/${id}` : '/api/automations', {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!r.ok) { const e = await r.json(); return alert('Error: ' + e.error); }
+        closeAutomationModal();
+        loadAutomations();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function toggleAutomation(id, newState) {
+      try {
+        await fetch(`/api/automations/${id}/toggle`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: newState }) });
+        loadAutomations();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function deleteAutomation(id) {
+      if (!confirm('Delete this automation? This cannot be undone.')) return;
+      try {
+        await fetch(`/api/automations/${id}`, { method: 'DELETE' });
+        loadAutomations();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    // ════════════════════════════════════════════════════════
+    // FLOW BUILDER
+    // ════════════════════════════════════════════════════════
     async function loadFlowsList() {
-      if (!clientId) return alert('Select client first');
+      if (!clientId) return;
+      document.getElementById('flow-list-wrap').style.display = 'block';
+      document.getElementById('flow-canvas-wrap').style.display = 'none';
+      document.getElementById('btn-flow-back').style.display = 'none';
+      document.getElementById('btn-save-flow').style.display = 'none';
+
       try {
         const r = await fetch('/api/flows?client_id=' + clientId);
         const flows = await r.json();
-        if (flows.length > 0) {
-          const flow = flows[0]; // load first flow for demo
-          currentFlowId = flow.id;
-          document.getElementById('flow-name').value = flow.name;
-          document.getElementById('flow-trigger-keyword').value = flow.trigger_config.keyword || '';
-          
-          const rNodes = await fetch('/api/flows/' + flow.id + '/nodes');
-          const nodes = await rNodes.json();
-          
-          editor.clearModuleSelected();
-          // Complex import logic would go here, omitting for brevity in v1. 
-          // Users will build visually and save.
-          alert('Flow loaded! Canvas cleared for new configuration in this version.');
-        } else {
-          alert('No flows found. Build one and save.');
+        const wrap = document.getElementById('flow-list-wrap');
+
+        if (!flows.length) {
+          wrap.innerHTML = `<div style="text-align:center;padding:48px;color:var(--muted);">
+            <div style="font-size:40px;margin-bottom:12px;">🔀</div>
+            <div style="font-weight:600;font-size:15px;margin-bottom:8px;">No flows yet</div>
+            <p style="font-size:13px;">Create a flow to build interactive multi-step conversations with buttons and inputs.</p>
+          </div>`;
+          return;
         }
-      } catch (e) { alert('Error: ' + e.message); }
+
+        wrap.innerHTML = flows.map(f => `
+          <div class="flow-list-card" onclick="openFlowCanvas('${f.id}','${esc(f.name)}')">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:40px;height:40px;border-radius:10px;background:${f.status==='active'?'#d1fae5':'#f3f4f6'};display:flex;align-items:center;justify-content:center;font-size:20px;">${f.status==='active'?'✅':'📋'}</div>
+              <div>
+                <div style="font-weight:700;font-size:14px;">${esc(f.name)}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px;">Trigger: <strong>${esc(f.trigger_type)}</strong> · Nodes: loading…</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="${f.status==='active'?'badge-status-active':'badge-status-draft'}">${f.status === 'active' ? 'Active' : 'Draft'}</span>
+              <span style="font-size:18px;color:var(--muted);">→</span>
+              <button style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:18px;" onclick="event.stopPropagation();deleteFlow('${f.id}')" title="Delete">🗑</button>
+            </div>
+          </div>
+        `).join('');
+      } catch(e) { console.error('loadFlowsList:', e); }
     }
 
-    async function saveActiveFlow() {
-      if (!clientId) return alert('Select client first');
-      const name = document.getElementById('flow-name').value.trim();
-      const keyword = document.getElementById('flow-trigger-keyword').value.trim();
-      if (!name || !keyword) return alert('Please enter a Flow Name and Trigger Keyword');
+    function openNewFlowModal() {
+      document.getElementById('new-flow-name').value = '';
+      document.getElementById('new-flow-keyword').value = '';
+      document.getElementById('new-flow-modal').style.display = 'flex';
+    }
+    function closeNewFlowModal() { document.getElementById('new-flow-modal').style.display = 'none'; }
 
-      const data = editor.export().drawflow.Home.data;
-      const nodesToSave = [];
-      
-      for (const key in data) {
-        const n = data[key];
-        
-        let config = n.data || {};
-        // Map edges (outputs)
-        if (n.outputs) {
-           for (const outKey in n.outputs) {
-              const connections = n.outputs[outKey].connections;
-              if (connections && connections.length > 0) {
-                 if (n.name === 'wait') {
-                    if (!config.branches) config.branches = [];
-                    // Very simple branching logic
-                    config.branches.push({ condition: config.condition, next_node: connections[0].node });
-                 } else {
-                    config.next_node = connections[0].node;
-                 }
-              }
-           }
-        }
-        
-        nodesToSave.push({
-          node_key: n.id.toString(),
-          node_type: n.name,
-          config: config,
-          position_x: n.pos_x,
-          position_y: n.pos_y
+    async function createNewFlow() {
+      const name = document.getElementById('new-flow-name').value.trim();
+      const trigger_type = document.getElementById('new-flow-trigger').value;
+      const keyword = document.getElementById('new-flow-keyword').value.trim();
+      if (!name) return alert('Flow name is required');
+      if (!clientId) return alert('Select a client first');
+      try {
+        const r = await fetch('/api/flows', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: clientId, name, trigger_type, trigger_config: { keywords: keyword ? [keyword] : [], match_type: 'contains' } })
         });
+        const flow = await r.json();
+        closeNewFlowModal();
+        openFlowCanvas(flow.id, flow.name);
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function deleteFlow(id) {
+      if (!confirm('Delete this flow? All nodes and run history will be removed.')) return;
+      try {
+        await fetch(`/api/flows/${id}`, { method: 'DELETE' });
+        loadFlowsList();
+      } catch(e) { alert('Error: ' + e.message); }
+    }
+
+    async function openFlowCanvas(flowId, flowName) {
+      currentFlowId = flowId;
+      canvasNodes = {};
+
+      document.getElementById('flow-list-wrap').style.display = 'none';
+      document.getElementById('flow-canvas-wrap').style.display = 'block';
+      document.getElementById('btn-flow-back').style.display = 'inline-flex';
+      document.getElementById('btn-save-flow').style.display = 'inline-flex';
+      document.getElementById('canvas-flow-name').textContent = flowName;
+
+      // Load flow details
+      try {
+        const r = await fetch('/api/flows/' + flowId);
+        const flow = await r.json();
+        document.getElementById('canvas-trigger-type').value = flow.trigger_type || 'keyword';
+        document.getElementById('canvas-flow-status').value = flow.status || 'draft';
+
+        const kws = (flow.trigger_config && flow.trigger_config.keywords) ? flow.trigger_config.keywords.join(', ') : (flow.trigger_config && flow.trigger_config.keyword ? flow.trigger_config.keyword : '');
+        document.getElementById('canvas-trigger-keyword').value = kws;
+
+        // Render nodes
+        const layer = document.getElementById('flow-nodes-layer');
+        layer.innerHTML = '';
+
+        for (const node of (flow.nodes || [])) {
+          addNodeToCanvas(node.node_type, node.node_key, node.config || {}, node.position_x || 100, node.position_y || 100);
+        }
+
+        // If no nodes, add default trigger node
+        if (!(flow.nodes || []).length) {
+          addNodeToCanvas('trigger', 'node_' + Date.now(), { text: 'Message matches trigger' }, 60, 80);
+        }
+
+        resizeEdgesCanvas();
+        drawAllEdges();
+
+      } catch(e) { console.error('openFlowCanvas:', e); }
+    }
+
+    function backToFlowList() {
+      currentFlowId = null;
+      canvasNodes = {};
+      document.getElementById('flow-nodes-layer').innerHTML = '';
+      loadFlowsList();
+    }
+
+    // ── Canvas Node Rendering ──────────────────────────────
+    const NODE_META = {
+      trigger:       { label: '⚡ Trigger', bg: '#d1fae5', border: '#10b981', hdr: '#047857' },
+      send_message:  { label: '💬 Message', bg: '#ede9fe', border: '#7c3aed', hdr: '#5b21b6' },
+      send_buttons:  { label: '🔘 Buttons', bg: '#dbeafe', border: '#3b82f6', hdr: '#1d4ed8' },
+      send_list:     { label: '📋 List', bg: '#e0f2fe', border: '#0284c7', hdr: '#0369a1' },
+      collect_input: { label: '📝 Collect Input', bg: '#fef3c7', border: '#d97706', hdr: '#92400e' },
+      condition:     { label: '⑂ Condition', bg: '#fce7f3', border: '#db2777', hdr: '#9d174d' },
+      set_tag:       { label: '🏷 Set Tag', bg: '#f0fdf4', border: '#16a34a', hdr: '#15803d' },
+      handoff:       { label: '🤝 Handoff', bg: '#fff7ed', border: '#ea580c', hdr: '#9a3412' },
+      end:           { label: '🔚 End', bg: '#f1f5f9', border: '#64748b', hdr: '#334155' },
+    };
+
+    function getNodeSummary(type, config) {
+      config = config || {};
+      switch(type) {
+        case 'trigger': return config.keywords ? `keywords: ${config.keywords.join(', ')}` : 'Entry point';
+        case 'send_message': return (config.text || '').substring(0, 50) || 'No message set';
+        case 'send_buttons': return config.text ? config.text.substring(0,40) : 'No text set';
+        case 'send_list': return config.text ? config.text.substring(0,40) : 'No text set';
+        case 'collect_input': return `Var: ${config.var_name || 'input'} → ${(config.prompt_text||'').substring(0,30)}`;
+        case 'condition': return `${config.subject||'var'} ${config.operator||'equals'} ${config.value||'?'}`;
+        case 'set_tag': return `${config.mode||'add'} tag`;
+        case 'handoff': return config.note || 'Transfer to agent';
+        case 'end': return 'Flow ends here';
+        default: return type;
+      }
+    }
+
+    function addNodeToCanvas(nodeType, nodeKey, config, x, y) {
+      const meta = NODE_META[nodeType] || NODE_META['send_message'];
+      const layer = document.getElementById('flow-nodes-layer');
+
+      const el = document.createElement('div');
+      el.className = 'flow-canvas-node';
+      el.id = 'cn_' + nodeKey;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.border = '1.5px solid ' + meta.border;
+      el.style.background = meta.bg;
+
+      el.innerHTML = `
+        <div class="flow-node-header" style="background:${meta.bg};color:${meta.hdr};border-bottom:1px solid ${meta.border};">
+          ${meta.label}
+          <button onclick="event.stopPropagation();removeCanvasNode('${nodeKey}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:${meta.hdr};font-size:14px;opacity:0.6;">✕</button>
+        </div>
+        <div class="flow-node-body" id="cnbody_${nodeKey}">${esc(getNodeSummary(nodeType, config))}</div>
+      `;
+
+      // Make draggable
+      el.onmousedown = (ev) => startNodeDrag(ev, nodeKey, el);
+      el.ondblclick = (ev) => { ev.stopPropagation(); openNodeConfigModal(nodeKey); };
+
+      layer.appendChild(el);
+      canvasNodes[nodeKey] = { node_type: nodeType, config: { ...config }, x, y, el };
+
+      return el;
+    }
+
+    function removeCanvasNode(nodeKey) {
+      const n = canvasNodes[nodeKey];
+      if (n && n.el) n.el.remove();
+      delete canvasNodes[nodeKey];
+      drawAllEdges();
+    }
+
+    // ── Drag nodes ────────────────────────────────────────
+    let dragging = null, dragOffsetX = 0, dragOffsetY = 0;
+
+    function startNodeDrag(ev, nodeKey, el) {
+      if (ev.target.tagName === 'BUTTON' || ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA') return;
+      ev.preventDefault();
+      const canvas = document.getElementById('flow-canvas');
+      const rect = canvas.getBoundingClientRect();
+      const nodeRect = el.getBoundingClientRect();
+      dragOffsetX = ev.clientX - nodeRect.left;
+      dragOffsetY = ev.clientY - nodeRect.top;
+      dragging = { nodeKey, el };
+
+      const onMove = (e) => {
+        if (!dragging) return;
+        const x = e.clientX - rect.left - dragOffsetX + canvas.scrollLeft;
+        const y = e.clientY - rect.top - dragOffsetY + canvas.scrollTop;
+        const nx = Math.max(0, x);
+        const ny = Math.max(0, y);
+        dragging.el.style.left = nx + 'px';
+        dragging.el.style.top = ny + 'px';
+        canvasNodes[nodeKey].x = nx;
+        canvasNodes[nodeKey].y = ny;
+        drawAllEdges();
+      };
+      const onUp = () => {
+        dragging = null;
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    // ── Palette drag & drop ───────────────────────────────
+    function paletteDrag(ev, nodeType) {
+      ev.dataTransfer.setData('nodeType', nodeType);
+    }
+
+    function canvasDrop(ev) {
+      ev.preventDefault();
+      const nodeType = ev.dataTransfer.getData('nodeType');
+      if (!nodeType) return;
+      const canvas = document.getElementById('flow-canvas');
+      const rect = canvas.getBoundingClientRect();
+      const x = ev.clientX - rect.left + canvas.scrollLeft - 90;
+      const y = ev.clientY - rect.top + canvas.scrollTop - 30;
+      const key = 'node_' + Date.now();
+      addNodeToCanvas(nodeType, key, {}, Math.max(0, x), Math.max(0, y));
+      drawAllEdges();
+    }
+
+    // ── Edge drawing (simple arrows) ──────────────────────
+    function resizeEdgesCanvas() {
+      const canvas = document.getElementById('flow-canvas');
+      const ec = document.getElementById('flow-edges-canvas');
+      ec.width = canvas.scrollWidth || canvas.offsetWidth;
+      ec.height = canvas.scrollHeight || canvas.offsetHeight;
+    }
+
+    function drawAllEdges() {
+      const ec = document.getElementById('flow-edges-canvas');
+      if (!ec) return;
+      resizeEdgesCanvas();
+      const ctx = ec.getContext('2d');
+      ctx.clearRect(0, 0, ec.width, ec.height);
+      ctx.strokeStyle = '#6366f1';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 2]);
+
+      // Draw edges based on next_node_key in configs
+      for (const [key, node] of Object.entries(canvasNodes)) {
+        const cfg = node.config;
+        const targets = [];
+        if (cfg.next_node_key) targets.push(cfg.next_node_key);
+        if (cfg.true_next) targets.push(cfg.true_next);
+        if (cfg.false_next) targets.push(cfg.false_next);
+        if (cfg.buttons) cfg.buttons.forEach(b => b.next_node_key && targets.push(b.next_node_key));
+
+        const fromEl = node.el;
+        if (!fromEl) continue;
+        const fx = node.x + fromEl.offsetWidth;
+        const fy = node.y + fromEl.offsetHeight / 2;
+
+        for (const targetKey of targets) {
+          const tNode = canvasNodes[targetKey];
+          if (!tNode) continue;
+          const tx = tNode.x;
+          const ty = tNode.y + (tNode.el ? tNode.el.offsetHeight / 2 : 30);
+
+          ctx.beginPath();
+          ctx.moveTo(fx, fy);
+          const cx = (fx + tx) / 2;
+          ctx.bezierCurveTo(cx, fy, cx, ty, tx, ty);
+          ctx.stroke();
+
+          // Arrowhead
+          ctx.setLineDash([]);
+          const angle = Math.atan2(ty - fy, tx - fx);
+          ctx.beginPath();
+          ctx.moveTo(tx, ty);
+          ctx.lineTo(tx - 10 * Math.cos(angle - 0.4), ty - 10 * Math.sin(angle - 0.4));
+          ctx.lineTo(tx - 10 * Math.cos(angle + 0.4), ty - 10 * Math.sin(angle + 0.4));
+          ctx.closePath();
+          ctx.fillStyle = '#6366f1';
+          ctx.fill();
+          ctx.setLineDash([4, 2]);
+        }
+      }
+    }
+
+    // ── Node Config Modal ─────────────────────────────────
+    function openNodeConfigModal(nodeKey) {
+      const node = canvasNodes[nodeKey];
+      if (!node) return;
+      activeNodeKey = nodeKey;
+      const meta = NODE_META[node.node_type] || {};
+      document.getElementById('node-modal-title').textContent = 'Configure: ' + (meta.label || node.node_type);
+      document.getElementById('node-config-body').innerHTML = buildNodeConfigForm(node.node_type, node.config, Object.keys(canvasNodes));
+      document.getElementById('node-config-modal').style.display = 'flex';
+    }
+
+    function buildNodeConfigForm(type, cfg, allNodeKeys) {
+      cfg = cfg || {};
+      const otherKeys = allNodeKeys.filter(k => k !== activeNodeKey);
+      const nodeSelect = (label, id, val) => `
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">${label}</label>
+          <select id="nc_${id}" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;">
+            <option value="">— None —</option>
+            ${otherKeys.map(k => `<option value="${k}" ${val===k?'selected':''}>${k} (${canvasNodes[k]?.node_type||''})</option>`).join('')}
+          </select>
+        </div>`;
+      const textInput = (label, id, val, placeholder) => `
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">${label}</label>
+          <input id="nc_${id}" value="${esc(val||'')}" placeholder="${placeholder||''}" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;">
+        </div>`;
+      const textArea = (label, id, val, placeholder) => `
+        <div style="margin-bottom:10px;">
+          <label style="font-size:12px;font-weight:600;color:var(--muted);">${label}</label>
+          <textarea id="nc_${id}" rows="3" placeholder="${placeholder||''}" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;resize:vertical;">${esc(val||'')}</textarea>
+        </div>`;
+
+      switch(type) {
+        case 'trigger':
+          return textInput('Keywords (comma separated)', 'keywords', (cfg.keywords||[]).join(', '), 'hi, hello, start');
+        case 'send_message':
+          return textArea('Message Text', 'text', cfg.text, 'Hello! How can I help you today?') +
+                 nodeSelect('Next Node', 'next_node_key', cfg.next_node_key);
+        case 'send_buttons': {
+          const btns = (cfg.buttons || [{ reply_id: 'btn_1', title: 'Option 1', next_node_key: '' }]);
+          return textArea('Message Text', 'text', cfg.text, 'Please choose an option:') +
+                 `<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);">Buttons (one per line: Reply ID | Label | Next Node)</label>
+                 <textarea id="nc_buttons" rows="4" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px;margin-top:4px;font-family:monospace;resize:vertical;">${btns.map(b => `${b.reply_id||''}|${b.title||''}|${b.next_node_key||''}`).join('\n')}</textarea></div>`;
+        }
+        case 'send_list': {
+          const rows = (cfg.sections && cfg.sections[0] && cfg.sections[0].rows) || [];
+          return textArea('Message Text', 'text', cfg.text, 'Choose from the list:') +
+                 textInput('Button Label', 'button_label', cfg.button_label, 'Select') +
+                 `<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);">Options (one per line: Reply ID | Label | Next Node)</label>
+                 <textarea id="nc_list_rows" rows="4" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:12px;margin-top:4px;font-family:monospace;resize:vertical;">${rows.map(r => `${r.reply_id||''}|${r.title||''}|${r.next_node_key||''}`).join('\n')}</textarea></div>`;
+        }
+        case 'collect_input':
+          return textArea('Prompt Text', 'prompt_text', cfg.prompt_text, 'What is your name?') +
+                 textInput('Save to Variable (var_name)', 'var_name', cfg.var_name, 'e.g. name, email') +
+                 nodeSelect('Next Node (after reply)', 'next_node_key', cfg.next_node_key);
+        case 'condition':
+          return `<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);">Subject</label>
+                 <select id="nc_subject" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;">
+                   <option value="var" ${cfg.subject==='var'?'selected':''}>Saved Variable</option>
+                   <option value="message_content" ${cfg.subject==='message_content'?'selected':''}>Message Text</option>
+                 </select></div>` +
+                 textInput('Subject Key (variable name)', 'subject_key', cfg.subject_key, 'e.g. name') +
+                 `<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);">Operator</label>
+                 <select id="nc_operator" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;">
+                   <option value="equals" ${cfg.operator==='equals'?'selected':''}>Equals</option>
+                   <option value="contains" ${cfg.operator==='contains'?'selected':''}>Contains</option>
+                   <option value="present" ${cfg.operator==='present'?'selected':''}>Is Present</option>
+                   <option value="absent" ${cfg.operator==='absent'?'selected':''}>Is Absent</option>
+                 </select></div>` +
+                 textInput('Compare Value', 'value', cfg.value, 'value to compare') +
+                 nodeSelect('If TRUE → Next Node', 'true_next', cfg.true_next) +
+                 nodeSelect('If FALSE → Next Node', 'false_next', cfg.false_next);
+        case 'set_tag':
+          return `<div style="margin-bottom:10px;"><label style="font-size:12px;font-weight:600;color:var(--muted);">Mode</label>
+                 <select id="nc_mode" style="width:100%;border:1px solid var(--border);padding:7px 10px;border-radius:8px;font-size:13px;margin-top:4px;">
+                   <option value="add" ${cfg.mode==='add'?'selected':''}>Add Tag</option>
+                   <option value="remove" ${cfg.mode==='remove'?'selected':''}>Remove Tag</option>
+                 </select></div>` +
+                 textInput('Tag ID', 'tag_id', cfg.tag_id, 'UUID of the tag') +
+                 nodeSelect('Next Node', 'next_node_key', cfg.next_node_key);
+        case 'handoff':
+          return textInput('Note (optional)', 'note', cfg.note, 'Escalating to human agent') +
+                 textInput('Assign to Agent ID (optional)', 'assign_to', cfg.assign_to, '');
+        case 'end':
+          return '<p style="font-size:13px;color:var(--muted);">This node ends the flow. No configuration needed.</p>';
+        default:
+          return '<p style="font-size:13px;color:var(--muted);">No configuration for this node type.</p>';
+      }
+    }
+
+    function saveNodeConfig() {
+      if (!activeNodeKey) return;
+      const node = canvasNodes[activeNodeKey];
+      if (!node) return;
+
+      const get = (id) => { const el = document.getElementById('nc_' + id); return el ? el.value.trim() : ''; };
+
+      let newConfig = {};
+      switch(node.node_type) {
+        case 'trigger':
+          newConfig = { keywords: get('keywords').split(',').map(s=>s.trim()).filter(Boolean), match_type: 'contains' };
+          break;
+        case 'send_message':
+          newConfig = { text: get('text'), next_node_key: get('next_node_key') || null };
+          break;
+        case 'send_buttons': {
+          const btnsRaw = get('buttons');
+          const buttons = btnsRaw.split('\n').map(line => {
+            const [reply_id, title, next_node_key] = line.split('|').map(s=>s.trim());
+            return { reply_id, title, next_node_key };
+          }).filter(b => b.reply_id && b.title);
+          newConfig = { text: get('text'), buttons };
+          break;
+        }
+        case 'send_list': {
+          const rowsRaw = get('list_rows');
+          const rows = rowsRaw.split('\n').map(line => {
+            const [reply_id, title, next_node_key] = line.split('|').map(s=>s.trim());
+            return { reply_id, title, next_node_key };
+          }).filter(r => r.reply_id && r.title);
+          newConfig = { text: get('text'), button_label: get('button_label') || 'Select', sections: [{ title: 'Options', rows }] };
+          break;
+        }
+        case 'collect_input':
+          newConfig = { prompt_text: get('prompt_text'), var_name: get('var_name') || 'input', next_node_key: get('next_node_key') || null };
+          break;
+        case 'condition':
+          newConfig = { subject: get('subject'), subject_key: get('subject_key'), operator: get('operator'), value: get('value'), true_next: get('true_next') || null, false_next: get('false_next') || null };
+          break;
+        case 'set_tag':
+          newConfig = { mode: get('mode'), tag_id: get('tag_id'), next_node_key: get('next_node_key') || null };
+          break;
+        case 'handoff':
+          newConfig = { note: get('note'), assign_to: get('assign_to') || null };
+          break;
+        default:
+          newConfig = {};
       }
 
-      if (nodesToSave.length === 0) return alert('Canvas is empty.');
+      canvasNodes[activeNodeKey].config = newConfig;
+
+      // Update node body summary
+      const bodyEl = document.getElementById('cnbody_' + activeNodeKey);
+      if (bodyEl) bodyEl.textContent = getNodeSummary(node.node_type, newConfig);
+
+      closeNodeModal();
+      drawAllEdges();
+    }
+
+    function closeNodeModal() {
+      document.getElementById('node-config-modal').style.display = 'none';
+      activeNodeKey = null;
+    }
+
+    // ── Save Flow Canvas to DB ────────────────────────────
+    async function saveFlowCanvas() {
+      if (!currentFlowId) return alert('No flow selected');
+      const triggerType = document.getElementById('canvas-trigger-type').value;
+      const keyword = document.getElementById('canvas-trigger-keyword').value.trim();
+      const status = document.getElementById('canvas-flow-status').value;
+
+      const nodes = Object.entries(canvasNodes).map(([key, n]) => ({
+        node_key: key,
+        node_type: n.node_type,
+        config: n.config,
+        position_x: Math.round(n.x),
+        position_y: Math.round(n.y)
+      }));
 
       try {
-        let flowId = currentFlowId;
-        if (!flowId) {
-          // Create new flow
-          const r = await fetch('/api/flows', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ client_id: clientId, name, trigger_type: 'keyword', trigger_config: { keyword } })
-          });
-          const d = await r.json();
-          flowId = d.id;
-          currentFlowId = flowId;
-        }
-
-        // Save nodes
-        const rNodes = await fetch(`/api/flows/${flowId}/save`, {
+        const r = await fetch(`/api/flows/${currentFlowId}/save`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nodes: nodesToSave, status: 'active' })
+          body: JSON.stringify({
+            nodes,
+            status,
+            trigger_type: triggerType,
+            trigger_config: { keywords: keyword ? [keyword] : [], match_type: 'contains' }
+          })
         });
-        
-        if (rNodes.ok) alert('Flow saved successfully!');
-        else alert('Error saving flow.');
-
-      } catch (e) {
-        alert('Error: ' + e.message);
-      }
+        if (r.ok) {
+          const btn = document.getElementById('btn-save-flow');
+          const origText = btn.textContent;
+          btn.textContent = '✅ Saved!';
+          btn.style.background = '#10b981';
+          setTimeout(() => { btn.textContent = origText; btn.style.background = ''; }, 2000);
+        } else {
+          const e = await r.json();
+          alert('Error: ' + e.error);
+        }
+      } catch(e) { alert('Error: ' + e.message); }
     }
+
+    // ── Utility ───────────────────────────────────────────
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // Hook into go() for automations tab
+    const _origGo = go;
+
+    // On page load also hook flows tab
+    const _origOnload = window.onload;
+    window.onload = async function() {
+      if (_origOnload) await _origOnload();
+    };
+
+    // loadFlowsList is now the flow list loader (from old reference in go())
+    // This ensures go('flows') still works:
+    // Already handled in switchAutomationSubTab but go() calls loadFlowsList:
+    // Override: When tab-flows is opened, show automations by default.
+    const _innerGo = go;
+    go = function(id) {
+      _innerGo(id);
+      if (id === 'flows') {
+        switchAutomationSubTab('automations');
+      }
+    };
+
   </script>
+
 </body>
 </html>
