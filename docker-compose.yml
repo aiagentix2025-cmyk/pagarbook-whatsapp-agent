@@ -10,6 +10,9 @@ services:
       - coolify
     ports:
       - "127.0.0.1:3000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
     environment:
       - PORT=3000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
