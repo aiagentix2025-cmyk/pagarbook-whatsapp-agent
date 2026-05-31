@@ -727,6 +727,129 @@ app.put('/api/deals/:id/stage', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// GET Flows
+app.get('/api/flows', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required' });
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query('SELECT * FROM public.flows WHERE client_id = $1 ORDER BY created_at DESC', [client_id]);
+    centralClient.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST Flow
+app.post('/api/flows', async (req, res) => {
+  const { client_id, name, trigger_type, trigger_config } = req.body;
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'INSERT INTO public.flows (client_id, name, trigger_type, trigger_config) VALUES ($1, $2, $3, $4) RETURNING id',
+      [client_id, name, trigger_type || 'keyword', trigger_config || {}]
+    );
+    centralClient.release();
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET Flow Nodes
+app.get('/api/flows/:id/nodes', async (req, res) => {
+  const flowId = req.params.id;
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query('SELECT * FROM public.flow_nodes WHERE flow_id = $1', [flowId]);
+    centralClient.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST Save Flow Nodes
+app.post('/api/flows/:id/save', async (req, res) => {
+  const flowId = req.params.id;
+  const { nodes, status } = req.body; // nodes should be an array of node objects
+  try {
+    const centralClient = await db.getCentralClient();
+    await centralClient.query('BEGIN');
+    
+    if (status) {
+      await centralClient.query('UPDATE public.flows SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, flowId]);
+    }
+    
+    // For simplicity, delete existing nodes and re-insert
+    await centralClient.query('DELETE FROM public.flow_nodes WHERE flow_id = $1', [flowId]);
+    
+    for (const node of nodes) {
+      await centralClient.query(
+        'INSERT INTO public.flow_nodes (flow_id, node_key, node_type, config, position_x, position_y) VALUES ($1, $2, $3, $4, $5, $6)',
+        [flowId, node.node_key, node.node_type, node.config, node.position_x, node.position_y]
+      );
+    }
+    
+    // Find entry node and update flow
+    const entryNode = nodes.find(n => n.node_type === 'trigger');
+    if (entryNode) {
+      await centralClient.query('UPDATE public.flows SET entry_node_id = $1 WHERE id = $2', [entryNode.node_key, flowId]);
+    }
+
+    await centralClient.query('COMMIT');
+    centralClient.release();
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Save Flow Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Analytics Dashboard
+app.get('/api/analytics', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    
+    // Global CRM stats
+    const flowCount = await centralClient.query('SELECT count(*) FROM public.flows WHERE client_id = $1', [client_id]);
+    const dealCount = await centralClient.query('SELECT count(*) FROM public.deals WHERE client_id = $1', [client_id]);
+    centralClient.release();
+
+    let tenantStats = { total_sessions: 0, total_messages: 0, failed_messages: 0 };
+    if (clientRes.rows.length > 0) {
+       const dbName = clientRes.rows[0].db_name;
+       const tenantPool = db.getTenantPool(dbName);
+       const sessions = await tenantPool.query('SELECT count(*) FROM public.chat_sessions');
+       const messages = await tenantPool.query('SELECT count(*) FROM public.chat_messages');
+       const failed = await tenantPool.query("SELECT count(*) FROM public.campaign_logs WHERE status = 'failed'");
+       
+       // Daily message trend
+       const trendRes = await tenantPool.query(`
+         SELECT DATE(created_at) as date, COUNT(*) as count 
+         FROM public.chat_messages 
+         WHERE created_at > CURRENT_DATE - INTERVAL '7 days' 
+         GROUP BY DATE(created_at) 
+         ORDER BY DATE(created_at) ASC
+       `);
+
+       tenantStats = {
+         total_sessions: parseInt(sessions.rows[0].count),
+         total_messages: parseInt(messages.rows[0].count),
+         failed_messages: parseInt(failed.rows[0].count),
+         trend: trendRes.rows
+       };
+    }
+
+    res.json({
+      flows: parseInt(flowCount.rows[0].count),
+      deals: parseInt(dealCount.rows[0].count),
+      ...tenantStats
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET Vector Search Playground
 app.get('/api/search', async (req, res) => {
   const { client_id, q } = req.query;
@@ -1732,6 +1855,106 @@ app.post('/webhook', async (req, res) => {
          VALUES ($1, 'human', $2, $3, $4)`,
         [session.id, hasImage ? 'image' : 'text', userTextContent || (hasImage ? 'Image uploaded' : ''), imageUrl]
       );
+
+      // ==========================================
+      // F2. INTERCEPT FOR NO-CODE AUTOMATION FLOWS
+      // ==========================================
+      try {
+        const centralClient2 = await db.getCentralClient();
+        const centralFlowsRes = await centralClient2.query("SELECT * FROM public.flows WHERE client_id = $1 AND status = 'active'", [client.id]);
+        
+        if (centralFlowsRes.rows.length > 0) {
+          const activeRunRes = await centralClient2.query("SELECT * FROM public.flow_runs WHERE client_id = $1 AND conversation_id = $2 AND status = 'active'", [client.id, session.id]);
+          
+          let activeRun = activeRunRes.rows[0];
+          let currentFlow = null;
+          
+          if (!activeRun) {
+            // Check for keyword triggers
+            for (const flow of centralFlowsRes.rows) {
+               if (flow.trigger_type === 'keyword' && flow.trigger_config && flow.trigger_config.keyword) {
+                  const kw = flow.trigger_config.keyword.toLowerCase();
+                  if ((userTextContent || '').toLowerCase().includes(kw)) {
+                     // Trigger matched! Create run.
+                     const createRun = await centralClient2.query(
+                       "INSERT INTO public.flow_runs (flow_id, client_id, conversation_id, current_node_key) VALUES ($1, $2, $3, $4) RETURNING *",
+                       [flow.id, client.id, session.id, flow.entry_node_id]
+                     );
+                     activeRun = createRun.rows[0];
+                     currentFlow = flow;
+                     console.log(`[Flows] Triggered flow '${flow.name}' for conversation ${session.id}`);
+                     break;
+                  }
+               }
+            }
+          } else {
+             currentFlow = centralFlowsRes.rows.find(f => f.id === activeRun.flow_id);
+          }
+
+          if (activeRun && currentFlow) {
+             console.log(`[Flows] Executing flow '${currentFlow.name}' node logic...`);
+             const nodesRes = await centralClient2.query("SELECT * FROM public.flow_nodes WHERE flow_id = $1", [currentFlow.id]);
+             const nodes = nodesRes.rows;
+             
+             let nextNodeId = activeRun.current_node_key || currentFlow.entry_node_id;
+             let nodeLimit = 10; // Prevent infinite loops
+             let runEnded = false;
+
+             while (nextNodeId && nodeLimit > 0) {
+               nodeLimit--;
+               const node = nodes.find(n => n.node_key == nextNodeId);
+               if (!node) break;
+
+               if (node.node_type === 'message') {
+                  const msg = node.config.message || '';
+                  await tenantPool.query(
+                    `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) VALUES ($1, 'ai', 'text', $2)`,
+                    [session.id, msg]
+                  );
+                  await sendWhatsAppMessage(recipientPhone, msg, client.system_access_token, client.phone_number_id);
+                  nextNodeId = node.config.next_node;
+               } else if (node.node_type === 'wait') {
+                  // If we are evaluating a user's reply to this wait node
+                  if (activeRun.current_node_key == node.node_key && userTextContent) {
+                     const branches = node.config.branches || [];
+                     let branchMatched = false;
+                     for (const b of branches) {
+                        if ((userTextContent || '').toLowerCase().includes((b.condition || '').toLowerCase())) {
+                           nextNodeId = b.next_node;
+                           branchMatched = true;
+                           break;
+                        }
+                     }
+                     if (!branchMatched) nextNodeId = node.config.fallback_node;
+                     activeRun.current_node_key = 'evaluated'; // Temporary state so we don't block on it again
+                  } else {
+                     // We just reached this wait node. Pause flow here.
+                     await centralClient2.query("UPDATE public.flow_runs SET current_node_key = $1, last_advanced_at = CURRENT_TIMESTAMP WHERE id = $2", [node.node_key, activeRun.id]);
+                     centralClient2.release();
+                     return; // Stop processing and wait for next webhook
+                  }
+               } else {
+                  // trigger node or unknown
+                  nextNodeId = node.config.next_node;
+               }
+             }
+
+             if (!nextNodeId || nextNodeId === 'end') {
+                await centralClient2.query("UPDATE public.flow_runs SET status = 'completed', ended_at = CURRENT_TIMESTAMP WHERE id = $1", [activeRun.id]);
+                console.log(`[Flows] Flow '${currentFlow.name}' completed.`);
+             } else if (!runEnded) {
+                await centralClient2.query("UPDATE public.flow_runs SET current_node_key = $1, last_advanced_at = CURRENT_TIMESTAMP WHERE id = $2", [nextNodeId, activeRun.id]);
+             }
+             
+             centralClient2.release();
+             return; // Bypass normal RAG pipeline since flow handled it
+          }
+        }
+        centralClient2.release();
+      } catch (e) {
+        console.error("Flow execution error:", e);
+      }
+      // ==========================================
 
       // G. Context-Aware RAG (Vector DB Search)
       console.log(`Querying pgvector KB for query: "${userTextContent}"...`);
