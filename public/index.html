@@ -4311,52 +4311,7 @@
       
       // Initialize preview on load
       updateLivePreview();
-      
-      // Initialize Drawflow
-      initDrawflow();
     });
-
-    // ═══════════ AUTOMATIONS / FLOWS (DRAWFLOW) ════════
-    let editor = null;
-    let currentFlowId = null;
-
-    function initDrawflow() {
-      const id = document.getElementById("drawflow");
-      if (!id || typeof Drawflow === 'undefined') return;
-      editor = new Drawflow(id);
-      editor.reroute = true;
-      editor.start();
-
-      // Register basic node HTML
-      editor.registerNode('trigger', `<div style="padding:10px; text-align:center;"><strong>Trigger Entry</strong><p style="font-size:11px; margin-top:4px;">Flow starts here</p></div>`, false, false);
-      editor.registerNode('message', `<div style="padding:10px;"><strong>Send Message</strong><br><textarea df-message style="width:100%; margin-top:8px; border:1px solid #ccc; border-radius:4px; padding:4px;" rows="2" placeholder="Type message..."></textarea></div>`, false, false);
-      editor.registerNode('wait', `<div style="padding:10px;"><strong>Wait for Reply</strong><br><input df-condition type="text" style="width:100%; margin-top:8px; border:1px solid #ccc; border-radius:4px; padding:4px;" placeholder="Keyword to wait for..."></div>`, false, false);
-    }
-
-    function dragNode(ev) {
-      ev.dataTransfer.setData("node", ev.target.getAttribute('data-node'));
-    }
-
-    function allowDropNode(ev) {
-      ev.preventDefault();
-    }
-
-    function dropNode(ev) {
-      ev.preventDefault();
-      const nodeType = ev.dataTransfer.getData("node");
-      if (!nodeType || !editor) return;
-
-      const posX = ev.clientX * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)) - (editor.precanvas.getBoundingClientRect().x * (editor.precanvas.clientWidth / (editor.precanvas.clientWidth * editor.zoom)));
-      const posY = ev.clientY * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)) - (editor.precanvas.getBoundingClientRect().y * (editor.precanvas.clientHeight / (editor.precanvas.clientHeight * editor.zoom)));
-
-      // Add node to canvas
-      switch(nodeType) {
-        case 'trigger': editor.addNode('trigger', 0, 1, posX, posY, 'trigger', {}, 'trigger'); break;
-        case 'message': editor.addNode('message', 1, 1, posX, posY, 'message', { message: '' }, 'message'); break;
-        case 'wait': editor.addNode('wait', 1, 2, posX, posY, 'wait', { condition: '' }, 'wait'); break;
-      }
-    }
-
 
     // ════════════════════════════════════════════════════════
     // AUTOMATIONS + FLOW BUILDER (Full Production)
