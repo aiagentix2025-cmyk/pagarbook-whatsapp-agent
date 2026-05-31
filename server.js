@@ -10,6 +10,7 @@ const queue = require('./queue');
 const docs = require('./docs');
 const llm = require('./llm');
 const media = require('./media');
+const { runAutomationsForTrigger, dispatchInboundToFlows } = require('./automation-engine');
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -727,7 +728,191 @@ app.put('/api/deals/:id/stage', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET Flows
+// ============================================================
+// CONTACTS API
+// ============================================================
+app.get('/api/contacts', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required' });
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('SELECT con.*, array_agg(json_build_object(\'id\', t.id, \'name\', t.name, \'color\', t.color)) FILTER (WHERE t.id IS NOT NULL) as tags FROM public.contacts con LEFT JOIN public.contact_tags ct ON ct.contact_id = con.id LEFT JOIN public.tags t ON t.id = ct.tag_id WHERE con.client_id = $1 GROUP BY con.id ORDER BY con.created_at DESC', [client_id]);
+    c.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/contacts', async (req, res) => {
+  const { client_id, phone, name, email, company, notes } = req.body;
+  if (!client_id || !phone) return res.status(400).json({ error: 'client_id and phone required' });
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query(
+      'INSERT INTO public.contacts (client_id, phone, name, email, company, notes) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (client_id, phone) DO UPDATE SET name=EXCLUDED.name, email=EXCLUDED.email, company=EXCLUDED.company, updated_at=NOW() RETURNING *',
+      [client_id, phone, name, email, company, notes]
+    );
+    c.release();
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/contacts/:id', async (req, res) => {
+  const { name, email, company, notes } = req.body;
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('UPDATE public.contacts SET name=$1, email=$2, company=$3, notes=$4, updated_at=NOW() WHERE id=$5 RETURNING *', [name, email, company, notes, req.params.id]);
+    c.release();
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/contacts/:id', async (req, res) => {
+  try {
+    const c = await db.getCentralClient();
+    await c.query('DELETE FROM public.contacts WHERE id=$1', [req.params.id]);
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ============================================================
+// TAGS API
+// ============================================================
+app.get('/api/tags', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id required' });
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('SELECT * FROM public.tags WHERE client_id=$1 ORDER BY name ASC', [client_id]);
+    c.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/tags', async (req, res) => {
+  const { client_id, name, color } = req.body;
+  if (!client_id || !name) return res.status(400).json({ error: 'client_id and name required' });
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('INSERT INTO public.tags (client_id, name, color) VALUES ($1, $2, $3) ON CONFLICT (client_id, name) DO UPDATE SET color=EXCLUDED.color RETURNING *', [client_id, name, color || '#6366f1']);
+    c.release();
+    res.json(result.rows[0]);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/contacts/:id/tags', async (req, res) => {
+  const { tag_id } = req.body;
+  try {
+    const c = await db.getCentralClient();
+    await c.query('INSERT INTO public.contact_tags (contact_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [req.params.id, tag_id]);
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/contacts/:id/tags/:tagId', async (req, res) => {
+  try {
+    const c = await db.getCentralClient();
+    await c.query('DELETE FROM public.contact_tags WHERE contact_id=$1 AND tag_id=$2', [req.params.id, req.params.tagId]);
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ============================================================
+// AUTOMATIONS API
+// ============================================================
+app.get('/api/automations', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id required' });
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('SELECT * FROM public.automations WHERE client_id=$1 ORDER BY created_at DESC', [client_id]);
+    c.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/automations', async (req, res) => {
+  const { client_id, name, description, trigger_type, trigger_config, is_active, steps } = req.body;
+  if (!client_id || !name || !trigger_type) return res.status(400).json({ error: 'client_id, name, trigger_type required' });
+  try {
+    const c = await db.getCentralClient();
+    const autoRes = await c.query(
+      'INSERT INTO public.automations (client_id, name, description, trigger_type, trigger_config, is_active) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+      [client_id, name, description||null, trigger_type, trigger_config||{}, !!is_active]
+    );
+    const automation = autoRes.rows[0];
+    if (steps && steps.length > 0) {
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        await c.query('INSERT INTO public.automation_steps (automation_id, step_type, step_config, position) VALUES ($1,$2,$3,$4)', [automation.id, s.step_type, s.step_config||{}, i]);
+      }
+    }
+    c.release();
+    res.status(201).json(automation);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/automations/:id', async (req, res) => {
+  try {
+    const c = await db.getCentralClient();
+    const autoRes = await c.query('SELECT * FROM public.automations WHERE id=$1', [req.params.id]);
+    const stepsRes = await c.query('SELECT * FROM public.automation_steps WHERE automation_id=$1 ORDER BY position ASC', [req.params.id]);
+    c.release();
+    if (!autoRes.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ ...autoRes.rows[0], steps: stepsRes.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/automations/:id', async (req, res) => {
+  const { name, description, trigger_type, trigger_config, is_active, steps } = req.body;
+  try {
+    const c = await db.getCentralClient();
+    await c.query('UPDATE public.automations SET name=$1, description=$2, trigger_type=$3, trigger_config=$4, is_active=$5, updated_at=NOW() WHERE id=$6', [name, description, trigger_type, trigger_config||{}, !!is_active, req.params.id]);
+    if (steps !== undefined) {
+      await c.query('DELETE FROM public.automation_steps WHERE automation_id=$1', [req.params.id]);
+      for (let i = 0; i < (steps||[]).length; i++) {
+        const s = steps[i];
+        await c.query('INSERT INTO public.automation_steps (automation_id, step_type, step_config, position) VALUES ($1,$2,$3,$4)', [req.params.id, s.step_type, s.step_config||{}, i]);
+      }
+    }
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/automations/:id/toggle', async (req, res) => {
+  const { is_active } = req.body;
+  try {
+    const c = await db.getCentralClient();
+    await c.query('UPDATE public.automations SET is_active=$1, updated_at=NOW() WHERE id=$2', [!!is_active, req.params.id]);
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/automations/:id', async (req, res) => {
+  try {
+    const c = await db.getCentralClient();
+    await c.query('DELETE FROM public.automations WHERE id=$1', [req.params.id]);
+    c.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/automations/:id/logs', async (req, res) => {
+  try {
+    const c = await db.getCentralClient();
+    const result = await c.query('SELECT * FROM public.automation_logs WHERE automation_id=$1 ORDER BY created_at DESC LIMIT 50', [req.params.id]);
+    c.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ============================================================
+// FLOWS API (full CRUD)
+// ============================================================
 app.get('/api/flows', async (req, res) => {
   const { client_id } = req.query;
   if (!client_id) return res.status(400).json({ error: 'client_id is required' });
@@ -739,66 +924,113 @@ app.get('/api/flows', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST Flow
 app.post('/api/flows', async (req, res) => {
-  const { client_id, name, trigger_type, trigger_config } = req.body;
+  const { client_id, name, description, trigger_type, trigger_config } = req.body;
+  if (!client_id || !name) return res.status(400).json({ error: 'client_id and name required' });
   try {
     const centralClient = await db.getCentralClient();
     const result = await centralClient.query(
-      'INSERT INTO public.flows (client_id, name, trigger_type, trigger_config) VALUES ($1, $2, $3, $4) RETURNING id',
-      [client_id, name, trigger_type || 'keyword', trigger_config || {}]
+      'INSERT INTO public.flows (client_id, name, description, status, trigger_type, trigger_config) VALUES ($1, $2, $3, \'draft\', $4, $5) RETURNING *',
+      [client_id, name, description||null, trigger_type || 'keyword', trigger_config || {}]
     );
     centralClient.release();
-    res.json({ success: true, id: result.rows[0].id });
+    res.status(201).json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// GET Flow Nodes
+app.get('/api/flows/:id', async (req, res) => {
+  try {
+    const centralClient = await db.getCentralClient();
+    const flowRes = await centralClient.query('SELECT * FROM public.flows WHERE id=$1', [req.params.id]);
+    const nodesRes = await centralClient.query('SELECT * FROM public.flow_nodes WHERE flow_id=$1 ORDER BY created_at ASC', [req.params.id]);
+    centralClient.release();
+    if (!flowRes.rows.length) return res.status(404).json({ error: 'Flow not found' });
+    res.json({ ...flowRes.rows[0], nodes: nodesRes.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/flows/:id', async (req, res) => {
+  const { name, description, status, trigger_type, trigger_config, entry_node_id } = req.body;
+  try {
+    const centralClient = await db.getCentralClient();
+    await centralClient.query(
+      'UPDATE public.flows SET name=$1, description=$2, status=$3, trigger_type=$4, trigger_config=$5, entry_node_id=$6, updated_at=NOW() WHERE id=$7',
+      [name, description, status, trigger_type, trigger_config||{}, entry_node_id, req.params.id]
+    );
+    centralClient.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/flows/:id', async (req, res) => {
+  try {
+    const centralClient = await db.getCentralClient();
+    await centralClient.query('DELETE FROM public.flows WHERE id=$1', [req.params.id]);
+    centralClient.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/flows/:id/nodes', async (req, res) => {
   const flowId = req.params.id;
   try {
     const centralClient = await db.getCentralClient();
-    const result = await centralClient.query('SELECT * FROM public.flow_nodes WHERE flow_id = $1', [flowId]);
+    const result = await centralClient.query('SELECT * FROM public.flow_nodes WHERE flow_id = $1 ORDER BY created_at ASC', [flowId]);
     centralClient.release();
     res.json(result.rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST Save Flow Nodes
 app.post('/api/flows/:id/save', async (req, res) => {
   const flowId = req.params.id;
-  const { nodes, status } = req.body; // nodes should be an array of node objects
+  const { nodes, status, entry_node_id, trigger_type, trigger_config } = req.body;
   try {
     const centralClient = await db.getCentralClient();
     await centralClient.query('BEGIN');
     
-    if (status) {
-      await centralClient.query('UPDATE public.flows SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, flowId]);
+    const updates = [];
+    const params = [];
+    let pi = 1;
+    if (status) { updates.push(`status=$${pi++}`); params.push(status); }
+    if (trigger_type) { updates.push(`trigger_type=$${pi++}`); params.push(trigger_type); }
+    if (trigger_config !== undefined) { updates.push(`trigger_config=$${pi++}`); params.push(trigger_config); }
+    updates.push(`updated_at=NOW()`);
+    if (updates.length > 1) {
+      params.push(flowId);
+      await centralClient.query(`UPDATE public.flows SET ${updates.join(',')} WHERE id=$${pi}`, params);
     }
-    
-    // For simplicity, delete existing nodes and re-insert
-    await centralClient.query('DELETE FROM public.flow_nodes WHERE flow_id = $1', [flowId]);
-    
-    for (const node of nodes) {
-      await centralClient.query(
-        'INSERT INTO public.flow_nodes (flow_id, node_key, node_type, config, position_x, position_y) VALUES ($1, $2, $3, $4, $5, $6)',
-        [flowId, node.node_key, node.node_type, node.config, node.position_x, node.position_y]
-      );
-    }
-    
-    // Find entry node and update flow
-    const entryNode = nodes.find(n => n.node_type === 'trigger');
-    if (entryNode) {
-      await centralClient.query('UPDATE public.flows SET entry_node_id = $1 WHERE id = $2', [entryNode.node_key, flowId]);
+
+    if (nodes !== undefined) {
+      await centralClient.query('DELETE FROM public.flow_nodes WHERE flow_id = $1', [flowId]);
+      let entryKey = entry_node_id;
+      for (const node of (nodes || [])) {
+        await centralClient.query(
+          'INSERT INTO public.flow_nodes (flow_id, node_key, node_type, config, position_x, position_y) VALUES ($1, $2, $3, $4, $5, $6)',
+          [flowId, node.node_key, node.node_type, JSON.stringify(node.config||{}), node.position_x||0, node.position_y||0]
+        );
+        if (!entryKey && (node.node_type === 'trigger' || node.node_type === 'start')) entryKey = node.node_key;
+      }
+      if (entryKey) {
+        await centralClient.query('UPDATE public.flows SET entry_node_id=$1 WHERE id=$2', [entryKey, flowId]);
+      }
     }
 
     await centralClient.query('COMMIT');
     centralClient.release();
     res.json({ success: true });
   } catch (err) {
-    console.error("Save Flow Error:", err);
+    console.error('Save Flow Error:', err);
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get('/api/flows/:id/runs', async (req, res) => {
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query('SELECT * FROM public.flow_runs WHERE flow_id=$1 ORDER BY started_at DESC LIMIT 50', [req.params.id]);
+    centralClient.release();
+    res.json(result.rows);
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET Analytics Dashboard
@@ -1857,102 +2089,66 @@ app.post('/webhook', async (req, res) => {
       );
 
       // ==========================================
-      // F2. INTERCEPT FOR NO-CODE AUTOMATION FLOWS
+      // F2. FLOWS + AUTOMATIONS EXECUTION ENGINE
       // ==========================================
       try {
-        const centralClient2 = await db.getCentralClient();
-        const centralFlowsRes = await centralClient2.query("SELECT * FROM public.flows WHERE client_id = $1 AND status = 'active'", [client.id]);
-        
-        if (centralFlowsRes.rows.length > 0) {
-          const activeRunRes = await centralClient2.query("SELECT * FROM public.flow_runs WHERE client_id = $1 AND conversation_id = $2 AND status = 'active'", [client.id, session.id]);
-          
-          let activeRun = activeRunRes.rows[0];
-          let currentFlow = null;
-          
-          if (!activeRun) {
-            // Check for keyword triggers
-            for (const flow of centralFlowsRes.rows) {
-               if (flow.trigger_type === 'keyword' && flow.trigger_config && flow.trigger_config.keyword) {
-                  const kw = flow.trigger_config.keyword.toLowerCase();
-                  if ((userTextContent || '').toLowerCase().includes(kw)) {
-                     // Trigger matched! Create run.
-                     const createRun = await centralClient2.query(
-                       "INSERT INTO public.flow_runs (flow_id, client_id, conversation_id, current_node_key) VALUES ($1, $2, $3, $4) RETURNING *",
-                       [flow.id, client.id, session.id, flow.entry_node_id]
-                     );
-                     activeRun = createRun.rows[0];
-                     currentFlow = flow;
-                     console.log(`[Flows] Triggered flow '${flow.name}' for conversation ${session.id}`);
-                     break;
-                  }
-               }
-            }
-          } else {
-             currentFlow = centralFlowsRes.rows.find(f => f.id === activeRun.flow_id);
-          }
+        // Check if contact has ever messaged before (for first_inbound_message trigger)
+        const msgCountRes = await tenantPool.query('SELECT count(*) FROM public.chat_messages WHERE session_id=$1 AND sender_type=\'human\'', [session.id]);
+        const isFirstInbound = parseInt(msgCountRes.rows[0].count) <= 1;
 
-          if (activeRun && currentFlow) {
-             console.log(`[Flows] Executing flow '${currentFlow.name}' node logic...`);
-             const nodesRes = await centralClient2.query("SELECT * FROM public.flow_nodes WHERE flow_id = $1", [currentFlow.id]);
-             const nodes = nodesRes.rows;
-             
-             let nextNodeId = activeRun.current_node_key || currentFlow.entry_node_id;
-             let nodeLimit = 10; // Prevent infinite loops
-             let runEnded = false;
+        // Ensure contact record exists in central contacts table
+        const contactUpsertRes = await (async () => {
+          const c2 = await db.getCentralClient();
+          try {
+            const r = await c2.query(
+              'INSERT INTO public.contacts (client_id, phone, name) VALUES ($1, $2, $3) ON CONFLICT (client_id, phone) DO UPDATE SET name=COALESCE(EXCLUDED.name, contacts.name) RETURNING id',
+              [client.id, recipientPhone, profileName || null]
+            );
+            return r.rows[0];
+          } finally { c2.release(); }
+        })();
+        const contactId = contactUpsertRes?.id || null;
 
-             while (nextNodeId && nodeLimit > 0) {
-               nodeLimit--;
-               const node = nodes.find(n => n.node_key == nextNodeId);
-               if (!node) break;
+        // Dispatch to flow engine first
+        const flowResult = await dispatchInboundToFlows({
+          clientId: client.id,
+          contactPhone: recipientPhone,
+          contactId,
+          sessionId: session.id,
+          messageText: userTextContent,
+          interactiveReplyId: messageObj.interactive?.button_reply?.id || messageObj.interactive?.list_reply?.id || null,
+          isFirstInbound,
+          accessToken: client.system_access_token,
+          phoneNumberId: client.phone_number_id,
+          tenantPool
+        });
 
-               if (node.node_type === 'message') {
-                  const msg = node.config.message || '';
-                  await tenantPool.query(
-                    `INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) VALUES ($1, 'ai', 'text', $2)`,
-                    [session.id, msg]
-                  );
-                  await sendWhatsAppMessage(recipientPhone, msg, client.system_access_token, client.phone_number_id);
-                  nextNodeId = node.config.next_node;
-               } else if (node.node_type === 'wait') {
-                  // If we are evaluating a user's reply to this wait node
-                  if (activeRun.current_node_key == node.node_key && userTextContent) {
-                     const branches = node.config.branches || [];
-                     let branchMatched = false;
-                     for (const b of branches) {
-                        if ((userTextContent || '').toLowerCase().includes((b.condition || '').toLowerCase())) {
-                           nextNodeId = b.next_node;
-                           branchMatched = true;
-                           break;
-                        }
-                     }
-                     if (!branchMatched) nextNodeId = node.config.fallback_node;
-                     activeRun.current_node_key = 'evaluated'; // Temporary state so we don't block on it again
-                  } else {
-                     // We just reached this wait node. Pause flow here.
-                     await centralClient2.query("UPDATE public.flow_runs SET current_node_key = $1, last_advanced_at = CURRENT_TIMESTAMP WHERE id = $2", [node.node_key, activeRun.id]);
-                     centralClient2.release();
-                     return; // Stop processing and wait for next webhook
-                  }
-               } else {
-                  // trigger node or unknown
-                  nextNodeId = node.config.next_node;
-               }
-             }
-
-             if (!nextNodeId || nextNodeId === 'end') {
-                await centralClient2.query("UPDATE public.flow_runs SET status = 'completed', ended_at = CURRENT_TIMESTAMP WHERE id = $1", [activeRun.id]);
-                console.log(`[Flows] Flow '${currentFlow.name}' completed.`);
-             } else if (!runEnded) {
-                await centralClient2.query("UPDATE public.flow_runs SET current_node_key = $1, last_advanced_at = CURRENT_TIMESTAMP WHERE id = $2", [nextNodeId, activeRun.id]);
-             }
-             
-             centralClient2.release();
-             return; // Bypass normal RAG pipeline since flow handled it
-          }
+        if (flowResult.consumed) {
+          console.log('[flows] Message consumed by flow engine.');
+          // Also fire automations (non-blocking)
+          runAutomationsForTrigger({
+            clientId: client.id,
+            triggerType: isFirstInbound ? 'first_inbound_message' : 'keyword_match',
+            contactPhone: recipientPhone,
+            contactId,
+            messageText: userTextContent,
+            sessionId: session.id
+          }).catch(e => console.error('[automations] fire error:', e.message));
+          return; // Flow handled this message, skip AI
         }
-        centralClient2.release();
+
+        // Fire automations in background (non-blocking)
+        runAutomationsForTrigger({
+          clientId: client.id,
+          triggerType: isFirstInbound ? 'first_inbound_message' : 'keyword_match',
+          contactPhone: recipientPhone,
+          contactId,
+          messageText: userTextContent,
+          sessionId: session.id
+        }).catch(e => console.error('[automations] fire error:', e.message));
+
       } catch (e) {
-        console.error("Flow execution error:", e);
+        console.error('[flows/automations] execution error:', e.message);
       }
       // ==========================================
 
