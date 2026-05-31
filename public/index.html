@@ -185,6 +185,12 @@
       border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
     }
     .chat-sidebar { width: 300px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .chat-deals-sidebar { width: 320px; border-left: 1px solid var(--border); display: flex; flex-direction: column; background: #f8faff; }
+    .chat-deals-head { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; background: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .chat-deals-body { flex: 1; overflow-y: auto; padding: 16px; }
+    .deal-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .deal-card-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .deal-card-meta { font-size: 12px; color: var(--muted); }
     .chat-sidebar-head { padding: 16px 20px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
     .chat-sessions { flex: 1; overflow-y: auto; }
     .sess-item { padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: 0.15s; }
@@ -199,6 +205,7 @@
     .bubble.incoming { align-self: flex-start; background: #f1f3f9; color: var(--text); border-bottom-left-radius: 3px; }
     .bubble.outgoing-ai { align-self: flex-end; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; border-bottom-right-radius: 3px; box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
     .bubble.outgoing-agent { align-self: flex-end; background: linear-gradient(135deg, #059669, #10b981); color: #fff; border-bottom-right-radius: 3px; box-shadow: 0 4px 12px rgba(16,185,129,0.2); }
+    .bubble.outgoing-note { align-self: center; background: #fffbeb; color: #92400e; border: 1px solid #fcd34d; width: 80%; border-radius: 12px; box-shadow: 0 2px 10px rgba(245,158,11,0.1); }
     .bubble.human { align-self: flex-end; background: var(--primary); color: #fff; border-bottom-right-radius: 3px; box-shadow: 0 4px 12px rgba(99,102,241,0.2); }
     .bubble.ai { align-self: flex-start; background: #f1f3f9; color: var(--text); border-bottom-left-radius: 3px; }
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 10px; text-align: center; font-size: 14px; }
@@ -933,7 +940,11 @@
           <div class="chat-main">
             <div class="chat-topbar" style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid var(--border);">
               <div id="chat-topbar-phone" style="font-weight:700;">Select a conversation →</div>
-              <div id="chat-bot-control" style="display:none; align-items:center; gap:8px;">
+              <div id="chat-bot-control" style="display:none; align-items:center; gap:12px;">
+                <select id="chat-agent-assign" style="background:#f0f2f8; border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; outline:none;" onchange="assignAgent()">
+                  <option value="">Unassigned</option>
+                  <!-- Agents injected here -->
+                </select>
                 <span id="chat-bot-badge" class="badge ok">Bot Active</span>
                 <label class="sw">
                   <input type="checkbox" id="chat-bot-toggle" onchange="toggleChatbotOverride()">
@@ -952,13 +963,30 @@
               <button class="btn-rm" onclick="clearChatAttachment()">✕ Remove</button>
             </div>
             <form id="chat-reply-form" style="display:none; padding:16px 20px; border-top:1px solid var(--border); background:#fff; align-items:center; gap:12px;" onsubmit="sendOperatorReply(event)">
-              <button type="button" class="btn sec" style="padding:10px; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center;" onclick="document.getElementById('chat-attachment').click()">
+              <button type="button" class="btn sec" style="padding:10px; border-radius:50%; width:40px; height:40px; display:flex; align-items:center; justify-content:center;" onclick="document.getElementById('chat-attachment').click()" id="chat-attach-btn">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z"/></svg>
               </button>
               <input type="file" id="chat-attachment" style="display:none;" onchange="uploadOperatorMedia(event)">
-              <input id="chat-reply-input" placeholder="Type a manual reply here… (Bot will pause for 24h)" style="flex:1; border:1px solid var(--border); border-radius:24px; padding:10px 18px; font-size:13.5px; outline:none;">
+              <div style="display:flex; flex-direction:column; flex:1; position:relative;">
+                <div style="position:absolute; top:-16px; left:12px; display:flex; gap:8px; font-size:11px; font-weight:600;">
+                  <label style="cursor:pointer; display:flex; align-items:center; gap:4px; color:var(--primary);"><input type="radio" name="reply_mode" value="message" checked onchange="toggleReplyMode()"> WhatsApp Message</label>
+                  <label style="cursor:pointer; display:flex; align-items:center; gap:4px; color:#f59e0b;"><input type="radio" name="reply_mode" value="note" onchange="toggleReplyMode()"> Internal Note</label>
+                </div>
+                <input id="chat-reply-input" placeholder="Type a manual reply here… (Bot will pause for 24h)" style="border:1px solid var(--border); border-radius:24px; padding:10px 18px; font-size:13.5px; outline:none; transition:background 0.2s;">
+              </div>
               <button type="submit" class="btn" style="border-radius:24px; padding:10px 20px;" id="chat-send-btn">Send</button>
             </form>
+          </div>
+          
+          <!-- Deals Sidebar -->
+          <div class="chat-deals-sidebar" id="chat-deals-sidebar" style="display:none;">
+            <div class="chat-deals-head">
+              <span>CRM Deals</span>
+              <button class="btn sec" style="padding:4px 8px; font-size:11px;" onclick="openNewDealModal()">+ New Deal</button>
+            </div>
+            <div class="chat-deals-body" id="chat-deals-body">
+              <div class="empty-state" style="padding:24px; font-size:13px;">Select a conversation to load deals</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1336,6 +1364,37 @@
     </div>
   </div>
 
+  <!-- Deals Modal -->
+  <div id="deal-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:#fff; padding:24px; border-radius:12px; width:400px; max-width:90%;">
+      <h3 style="margin-top:0; margin-bottom:16px;">Create New Deal</h3>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Deal Title</label>
+        <input type="text" id="deal-title" class="input" style="width:100%; border:1px solid var(--border); padding:8px;" placeholder="e.g. Website Revamp">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Value (Amount)</label>
+        <input type="number" id="deal-value" class="input" style="width:100%; border:1px solid var(--border); padding:8px;" placeholder="1000">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Pipeline</label>
+        <select id="deal-pipeline" class="input" style="width:100%; border:1px solid var(--border); padding:8px;" onchange="updateDealStages()">
+          <!-- Pipelines injected here -->
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Stage</label>
+        <select id="deal-stage" class="input" style="width:100%; border:1px solid var(--border); padding:8px;">
+          <!-- Stages injected here -->
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn sec" onclick="closeDealModal()">Cancel</button>
+        <button class="btn" onclick="saveDeal()">Save Deal</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let clientId = localStorage.getItem('wab_client') || '';
     let clientList = [];
@@ -1407,6 +1466,7 @@
           localStorage.setItem('wab_client', clientId);
           dd.value = clientId;
         }
+        if (typeof loadAgentsDropdown === 'function') loadAgentsDropdown();
 
         // Build clients table
         const tbody = document.getElementById('clients-tbody');
@@ -1458,6 +1518,7 @@
       localStorage.setItem('wab_client', clientId);
       loadStats();
       loadAgentConfig();
+      if (typeof loadAgentsDropdown === 'function') loadAgentsDropdown();
     }
 
     async function toggleListen(phoneId, val) {
@@ -2389,6 +2450,16 @@
           botBadge.className = 'badge ok';
           botToggle.checked = false;
         }
+        
+        const assignDropdown = document.getElementById('chat-agent-assign');
+        if (assignDropdown && sessData && sessData.assigned_agent_id) {
+          assignDropdown.value = sessData.assigned_agent_id;
+        } else if (assignDropdown) {
+          assignDropdown.value = "";
+        }
+
+        // Also load deals for this session
+        loadDeals(sessionId);
 
         replyForm.style.display = 'flex';
 
@@ -2398,10 +2469,12 @@
         if (!msgs.length) { body.innerHTML = '<div class="empty-state">No messages in this session.</div>'; return; }
         msgs.forEach(m => {
           const b = document.createElement('div');
-          const isIncoming = m.sender_type === 'human';
-          const bubbleClass = isIncoming 
-            ? 'incoming' 
-            : (m.sender_type === 'agent' ? 'outgoing-agent' : 'outgoing-ai');
+          let bubbleClass;
+          if (m.sender_type === 'human') bubbleClass = 'incoming';
+          else if (m.sender_type === 'agent_note') bubbleClass = 'outgoing-note';
+          else if (m.sender_type === 'agent') bubbleClass = 'outgoing-agent';
+          else bubbleClass = 'outgoing-ai';
+          
           b.className = 'bubble ' + bubbleClass;
           
           let contentHtml = '';
@@ -2414,6 +2487,8 @@
             senderLabel = '<span style="font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.75); display: block; margin-bottom: 4px;">🤖 AI Bot</span>';
           } else if (m.sender_type === 'agent') {
             senderLabel = '<span style="font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.85); display: block; margin-bottom: 4px;">👤 Operator</span>';
+          } else if (m.sender_type === 'agent_note') {
+            senderLabel = '<span style="font-size: 10px; font-weight: 700; color: #b45309; display: block; margin-bottom: 4px;">📝 Internal Note</span>';
           }
           
           contentHtml = senderLabel + contentHtml + (m.content || '').replace(/\n/g, '<br>');
@@ -2494,46 +2569,251 @@
       document.getElementById('chat-attachment').value = '';
     }
 
+    function toggleReplyMode() {
+      const mode = document.querySelector('input[name="reply_mode"]:checked').value;
+      const inp = document.getElementById('chat-reply-input');
+      const btn = document.getElementById('chat-send-btn');
+      const attachBtn = document.getElementById('chat-attach-btn');
+      if (mode === 'note') {
+        inp.placeholder = 'Type an internal note here (hidden from customer)…';
+        inp.style.background = '#fffbeb';
+        inp.style.borderColor = '#f59e0b';
+        btn.style.background = '#f59e0b';
+        btn.textContent = 'Save Note';
+        attachBtn.style.display = 'none';
+      } else {
+        inp.placeholder = 'Type a manual reply here… (Bot will pause for 24h)';
+        inp.style.background = '#fff';
+        inp.style.borderColor = 'var(--border)';
+        btn.style.background = 'var(--primary)';
+        btn.textContent = 'Send';
+        attachBtn.style.display = 'flex';
+      }
+    }
+
+    async function assignAgent() {
+      if (!currentChatSession || !clientId) return;
+      const agentId = document.getElementById('chat-agent-assign').value;
+      try {
+        await fetch(`/api/sessions/${currentChatSession}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ client_id: clientId, agent_id: agentId })
+        });
+        loadSessions();
+      } catch (err) {
+        console.error('Assign failed', err);
+      }
+    }
+
+    async function loadAgentsDropdown() {
+      if (!clientId) return;
+      try {
+        const r = await fetch(`/api/team?client_id=${clientId}`);
+        if (r.ok) {
+          const agents = await r.json();
+          const sel = document.getElementById('chat-agent-assign');
+          let html = '<option value="">Unassigned</option>';
+          agents.forEach(a => { html += `<option value="${a.id}">${a.full_name}</option>`; });
+          sel.innerHTML = html;
+        }
+      } catch (err) { console.error('Failed to load agents', err); }
+    }
+
+    let allPipelines = [];
+    async function loadPipelinesData() {
+      if (!clientId) return;
+      try {
+        const r = await fetch('/api/pipelines?client_id=' + clientId);
+        allPipelines = await r.json();
+      } catch (e) { console.error('Error loading pipelines', e); }
+    }
+
+    async function loadDeals(sessionId) {
+      if (!clientId || !sessionId) return;
+      document.getElementById('chat-deals-sidebar').style.display = 'flex';
+      const dealsBody = document.getElementById('chat-deals-body');
+      dealsBody.innerHTML = '<div class="empty-state">Loading deals...</div>';
+      
+      if (allPipelines.length === 0) await loadPipelinesData();
+
+      try {
+        const r = await fetch(`/api/sessions/${sessionId}/deals?client_id=${clientId}`);
+        const deals = await r.json();
+        
+        if (!deals.length) {
+          dealsBody.innerHTML = '<div class="empty-state" style="padding:24px; font-size:13px;">No deals for this conversation.</div>';
+          return;
+        }
+        
+        let html = '';
+        deals.forEach(d => {
+          html += `
+            <div class="deal-card">
+              <div class="deal-card-title">${d.title}</div>
+              <div class="deal-card-meta" style="margin-bottom:8px;">Value: ₹${d.value || 0}</div>
+              <div style="font-size:11px; display:inline-block; padding:3px 6px; border-radius:4px; background:${d.stage_color}20; color:${d.stage_color}; border:1px solid ${d.stage_color}50; font-weight:600;">
+                ${d.pipeline_name} &rarr; ${d.stage_name}
+              </div>
+            </div>
+          `;
+        });
+        dealsBody.innerHTML = html;
+      } catch (e) {
+        console.error(e);
+        dealsBody.innerHTML = '<div class="empty-state">Error loading deals.</div>';
+      }
+    }
+
+    function openNewDealModal() {
+      if (!currentChatSession) return alert('Please select a conversation first.');
+      if (allPipelines.length === 0) {
+        alert('No pipelines configured. Creating default pipeline...');
+        // Auto create default pipeline and stages for simplicity if none exist
+        createDefaultPipeline().then(() => {
+          showModal();
+        });
+      } else {
+        showModal();
+      }
+    }
+    
+    function showModal() {
+      const plSel = document.getElementById('deal-pipeline');
+      plSel.innerHTML = allPipelines.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      updateDealStages();
+      document.getElementById('deal-title').value = '';
+      document.getElementById('deal-value').value = '';
+      document.getElementById('deal-modal').style.display = 'flex';
+    }
+
+    async function createDefaultPipeline() {
+      try {
+        const pr = await fetch('/api/pipelines', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ client_id: clientId, name: 'Default Sales Pipeline' })
+        });
+        const pData = await pr.json();
+        const pId = pData.id;
+        
+        const stages = [
+          { name: 'Lead', color: '#6b7280', pos: 1 },
+          { name: 'Qualified', color: '#3b82f6', pos: 2 },
+          { name: 'Proposal', color: '#f59e0b', pos: 3 },
+          { name: 'Won', color: '#10b981', pos: 4 }
+        ];
+        
+        for (let s of stages) {
+          await fetch('/api/pipeline_stages', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ pipeline_id: pId, name: s.name, color: s.color, position: s.pos })
+          });
+        }
+        await loadPipelinesData();
+      } catch (e) { console.error('Failed to create default pipeline', e); }
+    }
+
+    function updateDealStages() {
+      const pId = document.getElementById('deal-pipeline').value;
+      const pipeline = allPipelines.find(p => p.id == pId);
+      const stSel = document.getElementById('deal-stage');
+      if (pipeline && pipeline.stages) {
+        stSel.innerHTML = pipeline.stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      } else {
+        stSel.innerHTML = '';
+      }
+    }
+
+    function closeDealModal() {
+      document.getElementById('deal-modal').style.display = 'none';
+    }
+
+    async function saveDeal() {
+      const title = document.getElementById('deal-title').value.trim();
+      const value = document.getElementById('deal-value').value;
+      const pipelineId = document.getElementById('deal-pipeline').value;
+      const stageId = document.getElementById('deal-stage').value;
+      
+      if (!title || !pipelineId || !stageId) return alert('Missing required fields.');
+      
+      try {
+        const r = await fetch('/api/deals', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            client_id: clientId,
+            conversation_id: currentChatSession,
+            pipeline_id: pipelineId,
+            stage_id: stageId,
+            title: title,
+            value: value || 0
+          })
+        });
+        if (r.ok) {
+          closeDealModal();
+          loadDeals(currentChatSession);
+        } else {
+          const d = await r.json();
+          alert('Failed to save deal: ' + d.error);
+        }
+      } catch (e) { alert('Error: ' + e.message); }
+    }
+
     async function sendOperatorReply(e) {
       if (e) e.preventDefault();
       if (!currentChatSession) return alert('Select a chat session first.');
       
       const inp = document.getElementById('chat-reply-input');
       const text = inp.value.trim();
+      const mode = document.querySelector('input[name="reply_mode"]:checked').value;
       
       if (!text && !attachedMediaUrl) {
-        return alert('Please type a message or upload an attachment.');
+        return alert(mode === 'note' ? 'Please type a note.' : 'Please type a message or upload an attachment.');
       }
       
       const btn = document.getElementById('chat-send-btn');
       const originalText = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Sending...';
-
-      let type = 'text';
-      if (attachedMediaUrl) {
-        type = attachedMimeType.startsWith('image/') ? 'image' : 'document';
-      }
+      btn.disabled = true; btn.textContent = mode === 'note' ? 'Saving...' : 'Sending...';
 
       try {
-        const r = await fetch(`/api/sessions/${currentChatSession}/reply`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            client_id: clientId,
-            message: text,
-            type: type,
-            mediaUrl: attachedMediaUrl,
-            filename: attachedFilename
-          })
-        });
-        if (r.ok) {
-          inp.value = '';
-          clearChatAttachment();
-          loadChat(currentChatSession, currentChatPhone, currentChatName);
-          loadSessions(); // Update list to reflect status changes
+        if (mode === 'note') {
+          const agentId = document.getElementById('chat-agent-assign').value;
+          const r = await fetch(`/api/sessions/${currentChatSession}/note`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client_id: clientId, note_text: text, agent_id: agentId })
+          });
+          if (r.ok) {
+            inp.value = '';
+            loadChat(currentChatSession, currentChatPhone, currentChatName);
+          } else {
+            const d = await r.json();
+            alert('Failed to save note: ' + (d.error || 'Unknown error'));
+          }
         } else {
-          const d = await r.json();
-          alert('Failed to send reply: ' + (d.error || 'Unknown error'));
+          let type = 'text';
+          if (attachedMediaUrl) {
+            type = attachedMimeType.startsWith('image/') ? 'image' : 'document';
+          }
+          const r = await fetch(`/api/sessions/${currentChatSession}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_id: clientId,
+              message: text,
+              type: type,
+              mediaUrl: attachedMediaUrl,
+              filename: attachedFilename
+            })
+          });
+          if (r.ok) {
+            inp.value = '';
+            clearChatAttachment();
+            loadChat(currentChatSession, currentChatPhone, currentChatName);
+            loadSessions(); // Update list to reflect status changes
+          } else {
+            const d = await r.json();
+            alert('Failed to send reply: ' + (d.error || 'Unknown error'));
+          }
         }
       } catch (err) {
         alert('Error: ' + err.message);

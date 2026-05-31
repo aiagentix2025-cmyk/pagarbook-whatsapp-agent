@@ -459,7 +459,7 @@ app.get('/api/sessions', async (req, res) => {
     else if (filter === 'human') filterClause = "WHERE s.human_intervened_at IS NOT NULL";
 
     const result = await tenantPool.query(`
-      SELECT s.id as session_id, s.customer_phone, c.name as customer_name, s.session_status, s.lead_category, s.human_intervened_at, s.last_interaction, count(m.id) as msg_count
+      SELECT s.id as session_id, s.customer_phone, c.name as customer_name, s.session_status, s.lead_category, s.human_intervened_at, s.last_interaction, s.assigned_agent_id, s.internal_notes, count(m.id) as msg_count
       FROM public.chat_sessions s
       LEFT JOIN public.contacts c ON c.phone = s.customer_phone
       LEFT JOIN public.chat_messages m ON m.session_id = s.id
@@ -497,7 +497,7 @@ app.get('/api/sessions/:id', async (req, res) => {
     res.json(result.rows.map(row => ({
       id: row.id,
       sender_type: row.sender_type,
-      type: row.sender_type === 'human' ? 'human' : 'ai',
+      type: row.sender_type === 'human' ? 'human' : (row.sender_type === 'agent_note' ? 'agent_note' : 'ai'),
       message_type: row.message_type,
       content: row.message_content,
       media_url: row.media_url,
@@ -535,6 +535,196 @@ app.post('/api/chats/summarize', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// POST Assign Agent to Session
+app.post('/api/sessions/:id/assign', async (req, res) => {
+  const { client_id, agent_id } = req.body;
+  const sessionId = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    centralClient.release();
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found' });
+    
+    const dbName = clientRes.rows[0].db_name;
+    const tenantPool = db.getTenantPool(dbName);
+    
+    await tenantPool.query('UPDATE public.chat_sessions SET assigned_agent_id = $1 WHERE id = $2', [agent_id || null, sessionId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Internal Note to Session
+app.post('/api/sessions/:id/note', async (req, res) => {
+  const { client_id, note_text, agent_id } = req.body;
+  const sessionId = req.params.id;
+  if (!client_id || !note_text) return res.status(400).json({ error: 'client_id and note_text are required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const clientRes = await centralClient.query('SELECT db_name FROM public.clients WHERE id = $1', [client_id]);
+    
+    // Also save in central contact_notes table
+    await centralClient.query(
+      'INSERT INTO public.contact_notes (client_id, conversation_id, agent_id, note_text) VALUES ($1, $2, $3, $4)',
+      [client_id, sessionId, agent_id || null, note_text]
+    );
+    centralClient.release();
+
+    if (clientRes.rows.length === 0) return res.status(404).json({ error: 'Client not found' });
+    const dbName = clientRes.rows[0].db_name;
+    const tenantPool = db.getTenantPool(dbName);
+    
+    // Insert into chat_messages to appear in UI
+    await tenantPool.query(
+      "INSERT INTO public.chat_messages (session_id, sender_type, message_type, message_content) VALUES ($1, 'agent_note', 'internal_note', $2)",
+      [sessionId, note_text]
+    );
+    
+    // Also append to internal_notes string for quick viewing
+    await tenantPool.query(
+      "UPDATE public.chat_sessions SET internal_notes = CONCAT(COALESCE(internal_notes, ''), chr(10), $1::text) WHERE id = $2",
+      [note_text, sessionId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Team (Agents)
+app.get('/api/team', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id parameter is required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'SELECT id, full_name, email, avatar_url, role, created_at FROM public.agents WHERE client_id = $1 ORDER BY created_at ASC',
+      [client_id]
+    );
+    centralClient.release();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Team (Agent)
+app.post('/api/team', async (req, res) => {
+  const { client_id, full_name, email, password_hash, role } = req.body;
+  if (!client_id || !full_name || !email || !password_hash) return res.status(400).json({ error: 'Required fields missing' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'INSERT INTO public.agents (client_id, full_name, email, password_hash, role) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [client_id, full_name, email, password_hash, role || 'agent']
+    );
+    centralClient.release();
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET Pipelines and Stages
+app.get('/api/pipelines', async (req, res) => {
+  const { client_id } = req.query;
+  if (!client_id) return res.status(400).json({ error: 'client_id parameter is required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const pipeRes = await centralClient.query('SELECT * FROM public.pipelines WHERE client_id = $1', [client_id]);
+    const stageRes = await centralClient.query('SELECT * FROM public.pipeline_stages WHERE pipeline_id IN (SELECT id FROM public.pipelines WHERE client_id = $1) ORDER BY position ASC', [client_id]);
+    centralClient.release();
+    
+    // Group stages under pipelines
+    const pipelines = pipeRes.rows.map(p => ({
+      ...p,
+      stages: stageRes.rows.filter(s => s.pipeline_id === p.id)
+    }));
+    res.json(pipelines);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Pipeline
+app.post('/api/pipelines', async (req, res) => {
+  const { client_id, name } = req.body;
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query('INSERT INTO public.pipelines (client_id, name) VALUES ($1, $2) RETURNING id', [client_id, name]);
+    centralClient.release();
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST Pipeline Stage
+app.post('/api/pipeline_stages', async (req, res) => {
+  const { pipeline_id, name, color, position } = req.body;
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query('INSERT INTO public.pipeline_stages (pipeline_id, name, color, position) VALUES ($1, $2, $3, $4) RETURNING id', [pipeline_id, name, color || '#3b82f6', position || 0]);
+    centralClient.release();
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET Deals for Session
+app.get('/api/sessions/:id/deals', async (req, res) => {
+  const { client_id } = req.query;
+  const sessionId = req.params.id;
+  if (!client_id) return res.status(400).json({ error: 'client_id is required' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'SELECT d.*, s.name as stage_name, s.color as stage_color, p.name as pipeline_name FROM public.deals d JOIN public.pipeline_stages s ON d.stage_id = s.id JOIN public.pipelines p ON d.pipeline_id = p.id WHERE d.conversation_id = $1 ORDER BY d.created_at DESC',
+      [sessionId]
+    );
+    centralClient.release();
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST Deal
+app.post('/api/deals', async (req, res) => {
+  const { client_id, pipeline_id, stage_id, conversation_id, title, value, notes } = req.body;
+  if (!client_id || !pipeline_id || !stage_id || !title) return res.status(400).json({ error: 'Missing fields' });
+
+  try {
+    const centralClient = await db.getCentralClient();
+    const result = await centralClient.query(
+      'INSERT INTO public.deals (client_id, pipeline_id, stage_id, conversation_id, title, value, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [client_id, pipeline_id, stage_id, conversation_id, title, value || 0, notes]
+    );
+    centralClient.release();
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT Deal Stage (move)
+app.put('/api/deals/:id/stage', async (req, res) => {
+  const { stage_id } = req.body;
+  const dealId = req.params.id;
+  try {
+    const centralClient = await db.getCentralClient();
+    await centralClient.query('UPDATE public.deals SET stage_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [stage_id, dealId]);
+    centralClient.release();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // GET Vector Search Playground

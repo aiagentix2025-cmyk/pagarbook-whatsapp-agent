@@ -181,6 +181,12 @@ async function runTenantMigrations(dbName) {
     await client.query(`
       ALTER TABLE public.chat_sessions ADD COLUMN IF NOT EXISTS human_intervened_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
     `);
+    await client.query(`
+      ALTER TABLE public.chat_sessions ADD COLUMN IF NOT EXISTS assigned_agent_id UUID;
+    `);
+    await client.query(`
+      ALTER TABLE public.chat_sessions ADD COLUMN IF NOT EXISTS internal_notes TEXT;
+    `);
 
     // 7. Create Chat History table
     await client.query(`

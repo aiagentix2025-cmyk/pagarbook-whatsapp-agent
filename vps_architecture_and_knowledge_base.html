@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPS System Architecture & Solution Design Document</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #0f172a;
+            --background: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #334155;
+            --text-dark: #0f172a;
+            --border: #e2e8f0;
+            --success: #10b981;
+            --info: #0ea5e9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Cover Page */
+        .cover {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            box-sizing: border-box;
+            text-align: center;
+            position: relative;
+        }
+
+        .cover-logo {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #3b82f6, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 2rem;
+        }
+
+        .cover-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 1.5rem;
+            max-width: 900px;
+        }
+
+        .cover-subtitle {
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #94a3b8;
+            margin-bottom: 3rem;
+            max-width: 600px;
+        }
+
+        .cover-meta {
+            border-top: 1px solid #334155;
+            padding-top: 2rem;
+            display: flex;
+            gap: 40px;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+
+        .cover-meta-item strong {
+            color: #cbd5e1;
+            display: block;
+            margin-bottom: 0.2rem;
+        }
+
+        /* Content Page */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            background-color: var(--card-bg);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Poppins', sans-serif;
+            color: var(--text-dark);
+            font-weight: 700;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 2.25rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 0.5rem;
+            margin-top: 3rem;
+        }
+
+        h2 {
+            font-size: 1.75rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.3rem;
+        }
+
+        h3 {
+            font-size: 1.35rem;
+        }
+
+        h4 {
+            font-size: 1.1rem;
+            color: var(--primary);
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* Lists */
+        ul {
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            padding-left: 2rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        /* Horizontal Rule */
+        hr {
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 3rem 0;
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            color: var(--text-dark);
+            font-weight: 600;
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+
+        /* Code Blocks */
+        pre {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: 'Fira Code', monospace;
+            background-color: #f1f5f9;
+            color: #e11d48;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: inherit;
+            padding: 0;
+            border-radius: 0;
+            font-size: inherit;
+        }
+
+        /* Mermaid diagram wrapper */
+        .mermaid {
+            background-color: #ffffff !important;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Print styling */
+        @media print {
+            body {
+                background-color: #ffffff;
+                color: #000000;
+            }
+            .cover {
+                page-break-after: always;
+                min-height: 95vh;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            pre {
+                background-color: #f8fafc;
+                color: #0f172a;
+                border: 1px solid var(--border);
+                page-break-inside: avoid;
+            }
+            table {
+                page-break-inside: avoid;
+            }
+            tr {
+                page-break-inside: avoid;
+            }
+            h1, h2, h3 {
+                page-break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cover Page -->
+    <div class="cover">
+        <div class="cover-logo">AGENTiX systems</div>
+        <div class="cover-title">VPS Architecture &<br>System Solution Design Document</div>
+        <div class="cover-subtitle">A Single Source of Truth for Servers, Databases, Networking, and Security Protocols</div>
+        
+        <div class="cover-meta">
+            <div class="cover-meta-item">
+                <strong>Target Host</strong>
+                76.13.250.173
+            </div>
+            <div class="cover-meta-item">
+                <strong>Author</strong>
+                Antigravity architect
+            </div>
+            <div class="cover-meta-item">
+                <strong>Date Created</strong>
+                May 29, 2026
+            </div>
+            <div class="cover-meta-item">
+                <strong>Status</strong>
+                Published
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <h1>VPS Architecture &amp; System Solution Design Document</h1>
+<p>This document serves as the <strong>Single Source of Truth</strong> for the production server infrastructure, databases, networking, and security configurations hosted on your VPS.</p>
+<hr />
+<h2>🖥️ System Overview</h2>
+<ul>
+  <li><strong>Host Public IP:</strong> <code>76.13.250.173</code></li>
+  <li><strong>Host OS:</strong> Ubuntu Linux</li>
+  <li><strong>Management Layer:</strong> Coolify v4 (Beta 463)</li>
+  <li><strong>SSL Edge Proxy:</strong> Traefik v3.6 (<code>coolify-proxy</code>)</li>
+  <li><strong>Host Web Server:</strong> Nginx (listening locally on port <code>8090</code> for <code>ai-agentix.com</code>)</li>
+  <li><strong>Process Manager:</strong> PM2 (running <code>ai-agentix-backend</code> on Node.js v20)</li>
+</ul>
+<hr />
+<h2>🌐 Network &amp; Routing Architecture</h2>
+<p>All external traffic enters through Traefik (<code>coolify-proxy</code>), which handles Let&#039;s Encrypt SSL/TLS termination and routes traffic to internal Docker networks or host-level loopback interfaces.</p>
+<pre class="mermaid">
+graph TD
+    User([External User]) -->|HTTPS: 443| Traefik[Traefik Edge Proxy: coolify-proxy]
+    
+    subgraph Docker Networks
+        Traefik -->|Internal DNS| PagarbookBot[Pagarbook Bot Container:3000]
+        Traefik -->|Internal DNS| KanbanCRM[Kanban CRM Container:5000]
+        Traefik -->|Internal DNS| NocoDB[NocoDB Container:8080]
+        Traefik -->|Internal DNS| PocketBase[PocketBase Container:8080]
+        
+        PagarbookBot -->|Internal DNS| PostgresDB[Postgres Container:5432]
+        KanbanCRM -->|Internal DNS| PostgresDB
+        NocoDB -->|Internal DNS| PostgresDB
+    end
+
+    subgraph Host Network
+        Traefik -->|Bridge Gateway: 10.0.0.1:8090| HostNginx[Host Nginx:8090]
+        HostNginx -->|Proxy Pass| PM2[PM2: ai-agentix-backend:3001]
+        HostNginx -->|Serve Files| DistFolder[/var/www/ai-agentix/frontend/dist]
+    end
+
+    subgraph External Networks
+        PM2 -->|Remote MySQL: 3306| Hostinger[Hostinger MySQL DB]
+        NocoDB -->|Remote MySQL: 3306| Hostinger
+    end
+</pre>
+<hr />
+<h2>📦 Active Applications Registry</h2>
+<div class="table-container"><table><thead>
+<tr><th>Application Name</th><th>Service Type</th><th>Deployment Path / Container</th><th>Internal Port</th><th>External Domain / Route</th><th>Status</th></tr>
+</thead><tbody>
+<tr><td><strong>coolify-proxy</strong></td><td>Traefik SSL Proxy</td><td>Docker: <code>coolify-proxy</code></td><td><code>80</code>, <code>443</code></td><td>Direct edge routing</td><td><code>Running</code></td></tr>
+<tr><td><strong>coolify</strong></td><td>Management Panel</td><td>Docker: <code>coolify</code></td><td><code>8000</code></td><td>Port 8000</td><td><code>Running</code></td></tr>
+<tr><td><strong>nocodb</strong></td><td>No-Code DB Layer</td><td>Docker: <code>nocodb-swcsokowgkko8ogwcsw0c044</code></td><td><code>8080</code></td><td><code>nocodb-swcsokowgkko8ogwcsw0c044.76.13.250.173.sslip.io</code></td><td><code>Running</code></td></tr>
+<tr><td><strong>pocketbase</strong></td><td>No-Code Backend</td><td>Docker: <code>pocketbase-jkc4oswoc00sw84wkgcsgk0c</code></td><td><code>8080</code></td><td>Managed under Coolify</td><td><code>Running</code></td></tr>
+<tr><td><strong>pagarbook-bot</strong></td><td>WhatsApp Bot API</td><td>Docker: <code>pagarbook-bot-container</code></td><td><code>3000</code></td><td><code>pagarbook.aiagentixdev.com</code></td><td><code>Running</code></td></tr>
+<tr><td><strong>kanban-crm</strong></td><td>CRM Dashboard</td><td>Docker: <code>kanban-crm</code></td><td><code>5000</code></td><td><code>crm.aiagentixdev.com</code> (mapped host: 5010)</td><td><code>Running</code></td></tr>
+<tr><td><strong>ai-agentix-frontend</strong></td><td>React Static Frontend</td><td>Host Nginx: <code>/var/www/ai-agentix/frontend/dist</code></td><td><code>8090</code></td><td><code>ai-agentix.com</code> &amp; <code>www.ai-agentix.com</code></td><td><code>Running</code></td></tr>
+<tr><td><strong>ai-agentix-backend</strong></td><td>Node Express API</td><td>PM2: <code>/var/www/ai-agentix/backend/server.js</code></td><td><code>3001</code></td><td><code>ai-agentix.com/api/</code></td><td><code>Running</code></td></tr>
+</tbody></table></div>
+<hr />
+<h2>🗄️ Database Infrastructure</h2>
+<h3>1. Central PostgreSQL Container</h3>
+<ul>
+  <li><strong>Container Name:</strong> <code>w04cscwsccsc880sc488cscg</code></li>
+  <li><strong>Docker DNS Alias:</strong> <code>w04cscwsccsc880sc488cscg</code> (resolves internally inside Docker <code>coolify</code> network)</li>
+  <li><strong>Port:</strong> <code>5432</code> (Exposed to host <code>0.0.0.0:5432</code>)</li>
+  <li><strong>Superuser Username:</strong> <code>postgres</code></li>
+  <li><strong>Superuser Password:</strong> <code>AGENTiX@2025</code></li>
+  <li><strong>Active Databases &amp; Mappings:</strong></li>
+</ul>
+<p>  1. <code>client_pagarbook_vms_db</code>: Stores WhatsApp Bot data (templates, chat sessions, campaign logs, contacts). Connected to <strong><code>pagarbook-bot-container</code></strong> and <strong>NocoDB</strong>.</p>
+<p>  2. <code>crm</code>: Stores Kanban CRM records (leads, pipelines, custom tags). Connected to <strong><code>kanban-crm</code></strong> and <strong>NocoDB</strong>.</p>
+<p>  3. <code>postgres</code>: Central administration and system config database. Connected to <strong>NocoDB</strong>.</p>
+<h3>2. External Hostinger MySQL Database</h3>
+<ul>
+  <li><strong>Host:</strong> <code>srv1988.hstgr.io</code></li>
+  <li><strong>Port:</strong> <code>3306</code></li>
+  <li><strong>Username:</strong> <code>u540387157_AI_Agentix</code></li>
+  <li><strong>Password:</strong> <code>AGENTiX@2025</code></li>
+  <li><strong>Database Name:</strong> <code>u540387157_AI_Agentix</code></li>
+  <li><strong>Active Tables (12):</strong> <code>case_studies</code>, <code>awards</code>, <code>admins</code>, <code>clients</code>, <code>contacts</code>, <code>demo_bookings</code>, <code>resources</code>, <code>posts</code>, <code>subscribers</code>, <code>services</code>, <code>team_members</code>, <code>voice_agent_leads</code></li>
+  <li><strong>Connected Applications:</strong></li>
+  <li><strong><code>ai-agentix-backend</code></strong> (running via PM2 on the VPS)</li>
+  <li><strong>NocoDB</strong> (mapped as data source <code>ai_agentix_db</code>)</li>
+</ul>
+<h3>3. NocoDB Metadata Database (SQLite)</h3>
+<ul>
+  <li><strong>Path inside Container:</strong> <code>/usr/app/data/noco.db</code></li>
+  <li><strong>Path on Host Volume:</strong> <code>/var/lib/docker/volumes/swcsokowgkko8ogwcsw0c044_nocodb-data/_data/noco.db</code></li>
+  <li><strong>User Sign-In:</strong> <code>aiagentix2025@gmail.com</code></li>
+  <li><strong>User Password:</strong> <code>AGENTiX@2025</code></li>
+  <li><strong>MCP Token:</strong> <code>sf5oZ18JwSiwfiQZlALL52a7tYDtGfP7</code></li>
+  <li><strong>Configured Data Sources:</strong></li>
+  <li><code>pagarbook_bot</code> (Postgres <code>client_pagarbook_vms_db</code>)</li>
+  <li><code>kanban_crm</code> (Postgres <code>crm</code>)</li>
+  <li><code>central_postgres</code> (Postgres <code>postgres</code>)</li>
+  <li><code>ai_agentix_db</code> (Hostinger MySQL <code>u540387157_AI_Agentix</code>)</li>
+</ul>
+<h3>4. PocketBase Database (SQLite)</h3>
+<ul>
+  <li><strong>Path on Host Volume:</strong> <code>/data/coolify/services/jkc4oswoc00sw84wkgcsgk0c/pb_data</code></li>
+  <li><strong>Dashboard FQDN:</strong> Configured inside Coolify UI.</li>
+</ul>
+<hr />
+<h2>🔒 Security &amp; Firewall Configurations</h2>
+<p>The host firewall uses <code>UFW</code> (Uncomplicated Firewall) with a strict default <code>DROP</code> policy. Only required ports are allowed:</p>
+<h3>1. UFW Rules List</h3>
+<ul>
+  <li><strong><code>22/tcp</code> (OpenSSH):</strong> Allowed from anywhere (admin shell access).</li>
+  <li><strong><code>80/tcp</code>, <code>443/tcp</code>:</strong> Allowed from anywhere (public web traffic to Traefik).</li>
+  <li><strong><code>5433/tcp</code>:</strong> Allowed from anywhere (management access).</li>
+  <li><strong>Docker Network Loopback Rules:</strong></li>
+</ul>
+<p>  To allow the Traefik docker container (<code>10.0.1.11</code>) to forward requests to Nginx running on the host port <code>8090</code>, UFW explicitly permits TCP traffic from Docker subnets:</p>
+<pre><code class="language-bash">  ufw allow proto tcp from 10.0.0.0/8 to any port 8090
+  ufw allow proto tcp from 172.16.0.0/12 to any port 8090</code></pre>
+<h3>2. Nginx Host Configuration (<code>/etc/nginx/sites-available/ai-agentix</code>)</h3>
+<p>Nginx binds locally to port <code>8090</code> without SSL (as Traefik handles Let&#039;s Encrypt SSL at the edge). It matches requests to <code>ai-agentix.com</code> / <code>www.ai-agentix.com</code>:</p>
+<ul>
+  <li><strong>Static Assets:</strong> Serves React app files directly from <code>/var/www/ai-agentix/frontend/dist</code>.</li>
+  <li><strong>API Proxying:</strong> Proxies all requests to <code>/api/</code> to <code>http://localhost:3001/api/</code>.</li>
+</ul>
+<h3>3. Traefik Routing Configuration (<code>/data/coolify/proxy/dynamic/ai-agentix.yaml</code>)</h3>
+<p>Enforces HTTP-to-HTTPS redirection and proxies HTTPS traffic to Nginx on the host gateway IP <code>host.docker.internal</code> (<code>10.0.0.1</code>):</p>
+<pre><code class="language-yaml">http:
+  routers:
+    ai-agentix-http:
+      rule: &quot;Host(`ai-agentix.com`) || Host(`www.ai-agentix.com`)&quot;
+      service: ai-agentix
+      entryPoints:
+        - http
+      middlewares:
+        - ai-agentix-redirect-to-https
+    ai-agentix-https:
+      rule: &quot;Host(`ai-agentix.com`) || Host(`www.ai-agentix.com`)&quot;
+      service: ai-agentix
+      entryPoints:
+        - https
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    ai-agentix-redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  services:
+    ai-agentix:
+      loadBalancer:
+        servers:
+          - url: &quot;http://host.docker.internal:8090&quot;</code></pre>
+<hr />
+<h2>🧹 Deprecated &amp; Collapsed Resources (Cleaned Assets)</h2>
+<p>To optimize disk storage and memory consumption, the following legacy assets were fully decommissioned:</p>
+<p>1. <strong><code>nritrust</code> Application:</strong> Crashing PM2 process stopped and deleted. Source files at <code>/var/www/nritrust</code> removed.</p>
+<p>2. <strong><code>aisummitjaipur.aiagentixdev.com</code> Landing Page:</strong> Files at <code>/var/www/aisummitjaipur.aiagentixdev.com</code> and its host Nginx symlinks removed.</p>
+<p>3. <strong>Legacy Databases:</strong> Dropped PostgreSQL databases <code>agentix</code> and <code>indiagrain_whatsapp_crm</code> (releasing space in the Postgres container).</p>
+<p>4. <strong>Outdated Backups:</strong> Removed all historical dumps (<code>.dump</code>, <code>.sql</code>, <code>.tar.gz</code>) from <code>/root/</code> to recover host storage.</p>
+<p>5. <strong>Leftover Directories:</strong> Deleted <code>/root/upload-api</code> and <code>/root/minio-data</code>.</p>
+<hr />
+<h2>🛠️ Maintenance &amp; Operations Playbook</h2>
+<h3>1. Process Monitoring</h3>
+<p>To check on the state of the Node.js backend:</p>
+<pre><code class="language-bash"># View active processes and resource usages
+pm2 list
+
+# Watch logs in real time
+pm2 logs ai-agentix-backend
+
+# Restart backend process
+pm2 restart ai-agentix-backend</code></pre>
+<h3>2. Router Configurations (Adding new custom routing)</h3>
+<p>Traefik dynamic configuration files are located under <code>/data/coolify/proxy/dynamic/</code>. When adding or editing configurations (like <code>crm.yaml</code> or <code>ai-agentix.yaml</code>), Traefik will automatically hot-reload them. If a hard reload is required:</p>
+<pre><code class="language-bash">docker restart coolify-proxy</code></pre>
+<h3>3. Nginx Operations</h3>
+<pre><code class="language-bash"># Test configurations for syntax errors
+nginx -t
+
+# Reload configuration changes
+systemctl reload nginx
+
+# Restart service
+systemctl restart nginx</code></pre>
+<h3>4. Database Access (Manual PostgreSQL Connection)</h3>
+<pre><code class="language-bash"># Enter the Postgres container command line
+docker exec -it w04cscwsccsc880sc488cscg psql -U postgres -d postgres</code></pre>
+
+    </div>
+
+    <!-- Mermaid.js integration -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+    </script>
+</body>
+</html>

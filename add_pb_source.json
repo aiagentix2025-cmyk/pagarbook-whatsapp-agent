@@ -1,0 +1,22 @@
+{
+  "alias": "pocketbase_db",
+  "type": "sqlite3",
+  "config": {
+    "client": "sqlite3",
+    "connection": {
+      "filename": "/usr/app/pb_data/data.db"
+    },
+    "pool": {
+      "min": 0,
+      "max": 1,
+      "acquireTimeoutMillis": 60000,
+      "createTimeoutMillis": 30000,
+      "destroyTimeoutMillis": 5000,
+      "reapIntervalMillis": 1000,
+      "createRetryIntervalMillis": 200
+    },
+    "useNullAsDefault": true
+  },
+  "inflection_column": "camelize",
+  "inflection_table": "camelize"
+}
